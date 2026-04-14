@@ -48,5 +48,5 @@ pip install -r requirements.txt
 - [ ] Handle API timeouts using `while` loops
 - [ ] Add true cost of fuel - cheaper fuel further away but driving there still costs
 - [ ] Create a real-time TUI - **depends on API functionality**
-- [ ] Modualise the code - split into functions/classes
+- [ ] Modularise the code - split into functions/classes
 - [ ] Replace `print` with `logging` module
