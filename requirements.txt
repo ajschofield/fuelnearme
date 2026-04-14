@@ -1,0 +1,4 @@
+colorama==0.4.6
+geopy==2.4.1
+pandas==3.0.2
+Requests==2.33.1
