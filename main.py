@@ -100,8 +100,6 @@ def main():
 
     df_processed = process_data(df)
 
-    print(f"\n{Fore.MAGENTA}Stations: " + Style.RESET_ALL + str(len(df_processed)))
-
     df_filtered = filter_df(df_processed, args, location)
 
     sorted_stations_list = sort_list_of_stations(df_filtered, args)
