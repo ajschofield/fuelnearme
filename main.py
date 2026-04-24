@@ -13,7 +13,6 @@ just_fix_windows_console()
 
 
 ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
-near_stations = []
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,56 +39,79 @@ def get_latest_data():
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
 
 
-args = parse_args()
+def process_data(dframe):
+    price_cols = [c for c in dframe.columns if "fuel_price" in c]
+    dframe[price_cols] = dframe[price_cols].fillna(0.0)
+    return dframe.fillna("N/A")
 
-location = get_location(args.address)
 
-df, last_modified = get_latest_data()
+def filter_df(dframe, arguments, loc):
+    near_stations = []
+    for station, latitude, longitude, e5_price, e10_price, diesel_price in zip(
+        dframe["forecourts.trading_name"],
+        dframe["forecourts.location.latitude"],
+        dframe["forecourts.location.longitude"],
+        dframe["forecourts.fuel_price.E5"],
+        dframe["forecourts.fuel_price.E10"],
+        dframe["forecourts.fuel_price.B7S"],
+    ):
+        distance_from_current_location = geodesic((latitude, longitude), loc).miles
+        if distance_from_current_location < arguments.radius:
+            station_dict = {
+                "station_name": station,
+                "distance": round(distance_from_current_location, 1),
+                "e5_price": round(e5_price / 100, 2),
+                "e10_price": round(e10_price / 100, 2),
+                "diesel_price": round(diesel_price / 100, 2),
+            }
+            near_stations.append(station_dict)
+    return near_stations
 
-print(f"Last modified: {last_modified}")
 
-price_cols = [c for c in df.columns if "fuel_price" in c]
-df[price_cols] = df[price_cols].fillna(0.0)
-df = df.fillna("N/A")
+def sort_list_of_stations(stations_list, arguments):
+    match arguments.sort:
+        case "e10":
+            sort_by = "e10_price"
+            return sorted(stations_list, key=lambda d: d[sort_by])
+        case "e5":
+            sort_by = "e5_price"
+            return sorted(stations_list, key=lambda d: d[sort_by])
+        case "b7s":
+            sort_by = "diesel_price"
+            return sorted(stations_list, key=lambda d: d[sort_by])
+        case "distance":
+            sort_by = "distance"
+            return sorted(stations_list, key=lambda d: d[sort_by])
 
-print(f"\n{Fore.MAGENTA}Stations: " + Style.RESET_ALL + str(len(df)))
 
-for station, latitude, longitude, e5_price, e10_price, diesel_price in zip(
-    df["forecourts.trading_name"],
-    df["forecourts.location.latitude"],
-    df["forecourts.location.longitude"],
-    df["forecourts.fuel_price.E5"],
-    df["forecourts.fuel_price.E10"],
-    df["forecourts.fuel_price.B7S"],
-):
-    distance_from_current_location = geodesic((latitude, longitude), location).miles
-    if distance_from_current_location < args.radius:
-        station_dict = {
-            "station_name": station,
-            "distance": round(distance_from_current_location, 1),
-            "e5_price": round(e5_price / 100, 2),
-            "e10_price": round(e10_price / 100, 2),
-            "diesel_price": round(diesel_price / 100, 2),
-        }
-        near_stations.append(station_dict)
+def output_stations(stations):
+    for number, row in enumerate(stations):
+        output = dedent(f"""
+        {number + 1}. {row["station_name"]}
+        Distance: {row["distance"]} miles
+        E5 Price: £{row["e5_price"]:.2f}/L
+        E10 Price: £{row["e10_price"]:.2f}/L
+        B7S (Standard Diesel) Price: £{row["diesel_price"]:.2f}/L""")
+        print(output)
 
-match args.sort:
-    case "e10":
-        sort_by = "e10_price"
-    case "e5":
-        sort_by = "e5_price"
-    case "b7s":
-        sort_by = "diesel_price"
-    case "distance":
-        sort_by = "distance"
 
-near_stations_sorted_by_price = sorted(near_stations, key=lambda d: d[sort_by])
+def main():
+    args = parse_args()
+    location = get_location(args.address)
+    df, last_modified = get_latest_data()
 
-for number, row in enumerate(near_stations_sorted_by_price):
-    output = dedent(f"""
-    {number + 1}. {row["station_name"]}
-    Distance: {row["distance"]} miles
-    E5 Price: £{row["e5_price"]:.2f}/L
-    E10 Price: £{row["e10_price"]:.2f}/L
-    B7S (Standard Diesel) Price: £{row["diesel_price"]:.2f}/L""")
-    print(output)
+    print(f"Last modified: {last_modified}")
+
+    df_processed = process_data(df)
+
+    print(f"\n{Fore.MAGENTA}Stations: " + Style.RESET_ALL + str(len(df_processed)))
+
+    df_filtered = filter_df(df_processed, args, location)
+
+    sorted_stations_list = sort_list_of_stations(df_filtered, args)
+
+    output_stations(sorted_stations_list)
+
+
+if __name__ == "__main__":
+    main()
