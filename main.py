@@ -16,6 +16,14 @@ ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-lates
 near_stations = []
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--address", type=str, required=True)
+    parser.add_argument("-r", "--radius", type=int, default=5)
+    parser.add_argument("-s", "--sort", type=str, default="e10")
+    return parser.parse_args()
+
+
 def get_location(address):
     loc = Nominatim(user_agent="FuelNearMe")
     getLoc = loc.geocode(address)
@@ -32,11 +40,7 @@ def get_latest_data():
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-a", "--address", type=str, required=True)
-parser.add_argument("-r", "--radius", type=int, default=5)
-parser.add_argument("-s", "--sort", type=str, default="e10")
-args = parser.parse_args()
+args = parse_args()
 
 location = get_location(args.address)
 
