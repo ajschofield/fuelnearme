@@ -5,12 +5,9 @@ from textwrap import dedent
 
 import pandas as pd
 import requests
-from colorama import Back, Fore, Style, just_fix_windows_console
+from colorama import Fore, Style
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
-
-just_fix_windows_console()
-
 
 ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
 
