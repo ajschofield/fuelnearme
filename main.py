@@ -8,6 +8,7 @@ import requests
 from colorama import Fore, Style
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
+from geopy.location import Location
 
 ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
 
@@ -20,15 +21,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_location(address):
-    loc = Nominatim(user_agent="FuelNearMe")
-    getLoc = loc.geocode(address)
-    if not getLoc:
+def get_location(address: str) -> tuple[float, float]:
+    geolocator = Nominatim(user_agent="FuelNearMe")
+    result = geolocator.geocode(address)
+    if not isinstance(result, Location):
         print("[*] Failed to get location. Please check if the address is valid.")
         sys.exit(1)
-    latitude = getLoc.latitude
-    longitude = getLoc.longitude
-    return (latitude, longitude)
+    return (result.latitude, result.longitude)
 
 
 def get_latest_data():
