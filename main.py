@@ -5,7 +5,6 @@ from textwrap import dedent
 
 import pandas as pd
 import requests
-from colorama import Fore, Style
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 from geopy.location import Location
