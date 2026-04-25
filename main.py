@@ -8,6 +8,7 @@ import requests
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 from geopy.location import Location
+from tabulate import tabulate
 
 ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
 
@@ -76,14 +77,19 @@ def sort_stations(stations: list[dict], sort: str) -> list[dict]:
 
 
 def output_stations(stations):
-    for number, row in enumerate(stations):
-        output = dedent(f"""
-        {number + 1}. {row["station_name"]}
-        Distance: {row["distance"]} miles
-        E5 Price: £{row["e5_price"]:.2f}/L
-        E10 Price: £{row["e10_price"]:.2f}/L
-        B7S (Standard Diesel) Price: £{row["diesel_price"]:.2f}/L""")
-        print(output)
+    print(
+        tabulate(
+            stations,
+            headers={
+                "station_name": "Station Name",
+                "distance": "Distance (miles)",
+                "e5_price": "E5 (£/L)",
+                "e10_price": "E10 (£/L)",
+                "diesel_price": "B7S (£/L)",
+            },
+            floatfmt=".2f",
+        )
+    )
 
 
 def main():
