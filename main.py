@@ -11,6 +11,13 @@ from geopy.location import Location
 
 ENDPOINT = "https://www.fuel-finder.service.gov.uk/internal/v1.0.2/csv/get-latest-fuel-prices-csv"
 
+SORT_KV = {
+    "e10": "e10_price",
+    "e5": "e5_price",
+    "b7s": "diesel_price",
+    "distance": "distance",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -63,20 +70,9 @@ def filter_df(dframe, arguments, loc):
     return near_stations
 
 
-def sort_list_of_stations(stations_list, arguments):
-    match arguments.sort:
-        case "e10":
-            sort_by = "e10_price"
-            return sorted(stations_list, key=lambda d: d[sort_by])
-        case "e5":
-            sort_by = "e5_price"
-            return sorted(stations_list, key=lambda d: d[sort_by])
-        case "b7s":
-            sort_by = "diesel_price"
-            return sorted(stations_list, key=lambda d: d[sort_by])
-        case "distance":
-            sort_by = "distance"
-            return sorted(stations_list, key=lambda d: d[sort_by])
+def sort_stations(stations: list[dict], sort: str) -> list[dict]:
+    sort_key = SORT_KV.get(sort)
+    return sorted(stations, key=lambda d: d[sort_key])
 
 
 def output_stations(stations):
@@ -101,7 +97,7 @@ def main():
 
     df_filtered = filter_df(df_processed, args, location)
 
-    sorted_stations_list = sort_list_of_stations(df_filtered, args)
+    sorted_stations_list = sort_stations(df_filtered, args.sort)
 
     output_stations(sorted_stations_list)
 
