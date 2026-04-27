@@ -78,7 +78,7 @@ def filter_df(
 
 
 def sort_stations(stations: list[dict], sort: str) -> list[dict]:
-    sort_key = SORT_KV.get(sort)
+    sort_key = SORT_KV[sort]
     return sorted(stations, key=lambda d: d[sort_key] if d[sort_key] != "N/A" else 999)
 
 
