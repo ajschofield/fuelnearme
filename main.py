@@ -83,6 +83,9 @@ def sort_stations(stations: list[dict], sort: str) -> list[dict]:
 
 
 def output_stations(stations: List[Dict[str, Any]]) -> None:
+    if not stations:
+        print("[*] No stations found.")
+        return
     print(
         tabulate(
             stations,
