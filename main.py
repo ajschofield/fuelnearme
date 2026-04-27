@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import requests
-from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 from geopy.location import Location
 from tabulate import tabulate
