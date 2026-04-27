@@ -2,7 +2,7 @@ import argparse
 import sys
 from io import StringIO
 from textwrap import dedent
-from typing import Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -42,22 +42,21 @@ def get_location(address: str) -> tuple[float, float]:
     return (result.latitude, result.longitude)
 
 
-def get_latest_data() -> Tuple[pd.DataFrame, str]:
-    try:
-        response = requests.get(ENDPOINT, headers=HEADERS, timeout=10)
-        response.raise_for_status()
-    except Exception as e:
-        raise e
+def get_latest_data() -> Tuple[pd.DataFrame, Optional[str]]:
+    response = requests.get(ENDPOINT, headers=HEADERS, timeout=10)
+    response.raise_for_status()
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
 
 
-def process_data(dframe):
+def process_data(dframe: pd.DataFrame) -> pd.DataFrame:
     price_cols = [c for c in dframe.columns if "fuel_price" in c]
     dframe[price_cols] = dframe[price_cols].fillna(0.0)
     return dframe.fillna("N/A")
 
 
-def filter_df(dframe, arguments, loc):
+def filter_df(
+    dframe: pd.DataFrame, arguments: argparse.Namespace, loc: Tuple[float, float]
+) -> List[Dict[str, Any]]:
     near_stations = []
     for station, latitude, longitude, e5_price, e10_price, diesel_price in zip(
         dframe["forecourts.trading_name"],
@@ -88,7 +87,7 @@ def sort_stations(stations: list[dict], sort: str) -> list[dict]:
     return sorted(stations, key=lambda d: d[sort_key] if d[sort_key] != "N/A" else 999)
 
 
-def output_stations(stations):
+def output_stations(stations: List[Dict[str, Any]]) -> None:
     print(
         tabulate(
             stations,
