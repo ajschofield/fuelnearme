@@ -2,6 +2,7 @@ import argparse
 import sys
 from io import StringIO
 from textwrap import dedent
+from typing import Tuple
 
 import pandas as pd
 import requests
@@ -37,8 +38,12 @@ def get_location(address: str) -> tuple[float, float]:
     return (result.latitude, result.longitude)
 
 
-def get_latest_data():
-    response = requests.get(ENDPOINT)
+def get_latest_data() -> Tuple[pd.DataFrame, str]:
+    try:
+        response = requests.get(ENDPOINT)
+        response.raise_for_status()
+    except Exception as e:
+        raise e
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
 
 
