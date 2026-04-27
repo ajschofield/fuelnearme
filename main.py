@@ -36,8 +36,7 @@ def get_location(address: str) -> tuple[float, float]:
     geolocator = Nominatim(user_agent="FuelNearMe")
     result = geolocator.geocode(address)
     if not isinstance(result, Location):
-        print("[*] Failed to get location. Please check if the address is valid.")
-        sys.exit(1)
+        raise ValueError(f"Failed to get location from address: '{address}")
     return (result.latitude, result.longitude)
 
 
@@ -101,7 +100,12 @@ def output_stations(stations: List[Dict[str, Any]]) -> None:
 
 def main():
     args = parse_args()
-    location = get_location(args.address)
+
+    try:
+        location = get_location(args.address)
+    except ValueError as e:
+        print(f"[*] {e}")
+        sys.exit(1)
     df, last_modified = get_latest_data()
 
     print(f"Last modified: {last_modified}")
