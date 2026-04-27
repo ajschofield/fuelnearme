@@ -111,7 +111,7 @@ def main():
         sys.exit(1)
     df, last_modified = get_latest_data()
 
-    print(f"Last modified: {last_modified}")
+    print(f"Last updated: {last_modified}")
 
     df_filtered = filter_df(df, args, location)
 
