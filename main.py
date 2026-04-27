@@ -67,13 +67,16 @@ def filter_df(dframe, arguments, loc):
                 "e10_price": round(e10_price / 100, 2),
                 "diesel_price": round(diesel_price / 100, 2),
             }
-            near_stations.append(station_dict)
+            na_dict = {
+                k: (v if v != 0.00 else "N/A") for (k, v) in station_dict.items()
+            }
+            near_stations.append(na_dict)
     return near_stations
 
 
 def sort_stations(stations: list[dict], sort: str) -> list[dict]:
     sort_key = SORT_KV.get(sort)
-    return sorted(stations, key=lambda d: d[sort_key])
+    return sorted(stations, key=lambda d: d[sort_key] if d[sort_key] != "N/A" else 999)
 
 
 def output_stations(stations):
