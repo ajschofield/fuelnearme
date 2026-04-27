@@ -47,12 +47,6 @@ def get_latest_data() -> Tuple[pd.DataFrame, Optional[str]]:
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
 
 
-def process_data(dframe: pd.DataFrame) -> pd.DataFrame:
-    price_cols = [c for c in dframe.columns if "fuel_price" in c]
-    dframe[price_cols] = dframe[price_cols].fillna(0.0)
-    return dframe.fillna("N/A")
-
-
 def filter_df(
     dframe: pd.DataFrame, arguments: argparse.Namespace, loc: Tuple[float, float]
 ) -> List[Dict[str, Any]]:
@@ -70,14 +64,17 @@ def filter_df(
             station_dict = {
                 "station_name": station,
                 "distance": round(distance_from_current_location, 1),
-                "e5_price": round(e5_price / 100, 2),
-                "e10_price": round(e10_price / 100, 2),
-                "diesel_price": round(diesel_price / 100, 2),
+                "e5_price": round(e5_price / 100, 2)
+                if not pd.isna(e5_price)
+                else "N/A",
+                "e10_price": round(e10_price / 100, 2)
+                if not pd.isna(e10_price)
+                else "N/A",
+                "diesel_price": round(diesel_price / 100, 2)
+                if not pd.isna(diesel_price)
+                else "N/A",
             }
-            na_dict = {
-                k: (v if v != 0.00 else "N/A") for (k, v) in station_dict.items()
-            }
-            near_stations.append(na_dict)
+            near_stations.append(station_dict)
     return near_stations
 
 
@@ -109,9 +106,7 @@ def main():
 
     print(f"Last modified: {last_modified}")
 
-    df_processed = process_data(df)
-
-    df_filtered = filter_df(df_processed, args, location)
+    df_filtered = filter_df(df, args, location)
 
     sorted_stations_list = sort_stations(df_filtered, args.sort)
 
