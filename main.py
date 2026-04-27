@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--address", type=str, required=True)
     parser.add_argument("-r", "--radius", type=int, default=5)
-    parser.add_argument("-s", "--sort", type=str, default="e10")
+    parser.add_argument("-s", "--sort", type=str, default="e10", choices=SORT_KV.keys())
     return parser.parse_args()
 
 
