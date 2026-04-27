@@ -41,7 +41,7 @@ def get_location(address: str) -> tuple[float, float]:
     return (result.latitude, result.longitude)
 
 
-def get_latest_data() -> Tuple[pd.DataFrame, Optional[str]]:
+def get_latest_data() -> tuple[pd.DataFrame, Optional[str]]:
     response = requests.get(ENDPOINT, headers=HEADERS, timeout=10)
     response.raise_for_status()
     return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
