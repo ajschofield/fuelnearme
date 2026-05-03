@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fnme = "fuelnearme.cli:main"
+fnme = "fnme.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

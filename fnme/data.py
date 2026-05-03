@@ -3,7 +3,8 @@ from typing import Optional
 
 import pandas as pd
 import requests
-from constants import ENDPOINT, HEADERS
+
+from fnme.constants import ENDPOINT, HEADERS
 
 
 def get_latest_data() -> tuple[pd.DataFrame, Optional[str]]:

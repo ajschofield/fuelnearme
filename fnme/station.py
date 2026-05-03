@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from constants import SORT_KV
+
+from fnme.constants import SORT_KV
 
 
 def filter_df(

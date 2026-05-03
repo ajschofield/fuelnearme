@@ -2,11 +2,12 @@ import argparse
 import sys
 from typing import Any, Dict, List
 
-from constants import SORT_KV
-from data import get_latest_data
-from geo import get_location
-from station import filter_df, sort_stations
 from tabulate import tabulate
+
+from fnme.constants import SORT_KV
+from fnme.data import get_latest_data
+from fnme.geo import get_location
+from fnme.station import filter_df, sort_stations
 
 
 def parse_args() -> argparse.Namespace:
