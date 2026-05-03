@@ -35,19 +35,3 @@ activate it, and then install the dependencies from the `requirements.txt`.
 ```
 pip install -r requirements.txt
 ```
-
-## To-Do & Goals
-
-- [ ] ~~Access data via API (requires OAuth 2.0 credentials)~~ (*The API is unsuitable
-in its current station for this project*)
-- [ ] Improve aesthetics of output (i.e. table view)
-- [ ] Create installable Python package for CLI
-- [ ] Show premium diesel prices
-- [ ] Avoid `for` loops - use NumPy operations to speed up operations
-- [ ] Use bounding boxes to discard stations outside of coordinate ranges (e.g. ±0.1 degrees)
-- [ ] Cache Nominatim results to reduce hits on API
-- [ ] Handle API timeouts using `while` loops
-- [ ] Add true cost of fuel - cheaper fuel further away but driving there still costs
-- [ ] Create a real-time TUI - **depends on API functionality**
-- [ ] Modularise the code - split into functions/classes
-- [ ] Replace `print` with `logging` module
