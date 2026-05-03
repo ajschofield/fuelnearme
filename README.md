@@ -38,7 +38,8 @@ pip install -r requirements.txt
 
 ## To-Do & Goals
 
-- [ ] Access data via API (requires OAuth 2.0 credentials)
+- [ ] ~~Access data via API (requires OAuth 2.0 credentials)~~ (*The API is unsuitable
+in its current station for this project*)
 - [ ] Improve aesthetics of output (i.e. table view)
 - [ ] Create installable Python package for CLI
 - [ ] Show premium diesel prices
