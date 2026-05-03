@@ -1,0 +1,20 @@
+[project]
+name = "fnme"
+version = "0.1.0"
+description = "Find cheap(er) fuel near you using the official Fuel Finder service provided by the UK government"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "geopy>=2.4.1",
+    "pandas>=3.0.2",
+    "requests>=2.33.1",
+    "numpy>=2.4.4",
+    "tabulate>=0.10.0"
+]
+
+[project.scripts]
+fnme = "fuelnearme.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fnme"]
