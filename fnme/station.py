@@ -1,30 +1,11 @@
 import argparse
 import math
-from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import requests
-from geopy.geocoders import Nominatim
-from geopy.location import Location
-from tabulate import tabulate
 
-from constants import ENDPOINT, HEADERS, SORT_KV
-
-
-def get_location(address: str) -> tuple[float, float]:
-    geolocator = Nominatim(user_agent="FuelNearMe")
-    result = geolocator.geocode(address)
-    if not isinstance(result, Location):
-        raise ValueError(f"Failed to get location from address: '{address}'")
-    return (result.latitude, result.longitude)
-
-
-def get_latest_data() -> tuple[pd.DataFrame, Optional[str]]:
-    response = requests.get(ENDPOINT, headers=HEADERS, timeout=10)
-    response.raise_for_status()
-    return pd.read_csv(StringIO(response.text)), response.headers.get("Last-Modified")
+from fnme.constants import SORT_KV
 
 
 def filter_df(
@@ -77,22 +58,3 @@ def filter_df(
 def sort_stations(stations: list[dict], sort: str) -> list[dict]:
     sort_key = SORT_KV[sort]
     return sorted(stations, key=lambda d: d[sort_key] if d[sort_key] != "N/A" else 999)
-
-
-def output_stations(stations: List[Dict[str, Any]]) -> None:
-    if not stations:
-        print("[*] No stations found.")
-        return
-    print(
-        tabulate(
-            stations,
-            headers={
-                "station_name": "Station Name",
-                "distance": "Distance (miles)",
-                "e5_price": "E5 (£/L)",
-                "e10_price": "E10 (£/L)",
-                "diesel_price": "B7S (£/L)",
-            },
-            floatfmt=".2f",
-        )
-    )

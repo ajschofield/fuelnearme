@@ -1,14 +1,13 @@
 import argparse
 import sys
+from typing import Any, Dict, List
 
-from constants import SORT_KV
-from helpers import (
-    filter_df,
-    get_latest_data,
-    get_location,
-    output_stations,
-    sort_stations,
-)
+from tabulate import tabulate
+
+from fnme.constants import SORT_KV
+from fnme.data import get_latest_data
+from fnme.geo import get_location
+from fnme.station import filter_df, sort_stations
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,6 +16,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-r", "--radius", type=int, default=5)
     parser.add_argument("-s", "--sort", type=str, default="e10", choices=SORT_KV.keys())
     return parser.parse_args()
+
+
+def output_stations(stations: List[Dict[str, Any]]) -> None:
+    if not stations:
+        print("[*] No stations found.")
+        return
+    print(
+        tabulate(
+            stations,
+            headers={
+                "station_name": "Station Name",
+                "distance": "Distance (miles)",
+                "e5_price": "E5 (£/L)",
+                "e10_price": "E10 (£/L)",
+                "diesel_price": "B7S (£/L)",
+            },
+            floatfmt=".2f",
+        )
+    )
 
 
 def main():
