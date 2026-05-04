@@ -16,8 +16,12 @@ def _bounding_box(
     deg_lat = rad / 69.0
     deg_lon = rad / (69.0 * math.cos(math.radians(lat)))
     return dframe[
-        dframe["forecourts.location.latitude"].between(lat - deg_lat, lat + deg_lat)
-        & dframe["forecourts.location.longitude"].between(lon - deg_lon, lon + deg_lon)
+        dframe["forecourts.location.latitude"].between(
+            lat - deg_lat, lat + deg_lat
+        )
+        & dframe["forecourts.location.longitude"].between(
+            lon - deg_lon, lon + deg_lon
+        )
     ]
 
 
@@ -29,7 +33,10 @@ def _haversine_miles(
     lat2, lon2 = np.radians(lat2), np.radians(lon2)
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    a = (
+        np.sin(dlat / 2) ** 2
+        + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    )
     return R * 2 * np.arcsin(np.sqrt(a))
 
 
@@ -73,5 +80,6 @@ def process_stations(
 def sort_stations(stations: list[dict], sort: str) -> list[dict]:
     sort_key = SORT_KV[sort]
     return sorted(
-        stations, key=lambda d: d[sort_key] if d[sort_key] is not None else float("inf")
+        stations,
+        key=lambda d: d[sort_key] if d[sort_key] is not None else float("inf"),
     )

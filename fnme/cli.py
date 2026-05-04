@@ -15,14 +15,20 @@ _PRICE_COLS = {
     "diesel_price": "B7S (£/L)",
 }
 
-_HEADERS = {"station_name": "Station Name", "distance": "Distance (mi)", **_PRICE_COLS}
+_HEADERS = {
+    "station_name": "Station Name",
+    "distance": "Distance (mi)",
+    **_PRICE_COLS,
+}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--address", type=str, required=True)
     parser.add_argument("-r", "--radius", type=int, default=5)
-    parser.add_argument("-s", "--sort", type=str, default="e10", choices=SORT_KV.keys())
+    parser.add_argument(
+        "-s", "--sort", type=str, default="e10", choices=SORT_KV.keys()
+    )
     return parser.parse_args()
 
 
@@ -35,7 +41,10 @@ def output_stations(stations: List[Dict[str, Any]]) -> None:
         print("[*] No stations found.")
         return
 
-    rows = [{**s, **{col: _fmt_price(s[col]) for col in _PRICE_COLS}} for s in stations]
+    rows = [
+        {**s, **{col: _fmt_price(s[col]) for col in _PRICE_COLS}}
+        for s in stations
+    ]
 
     print(tabulate(rows, headers=_HEADERS, floatfmt="1.f"))
 
