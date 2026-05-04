@@ -7,7 +7,7 @@ from tabulate import tabulate
 from fnme.constants import SORT_KV
 from fnme.data import get_latest_data
 from fnme.geo import get_location
-from fnme.station import filter_df, sort_stations
+from fnme.station import process_stations, sort_stations
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,7 +49,7 @@ def main():
 
     print(f"Last updated: {last_modified}")
 
-    df_filtered = filter_df(df, args, location)
+    df_filtered = process_stations(df, args, location)
 
     sorted_stations_list = sort_stations(df_filtered, args.sort)
 

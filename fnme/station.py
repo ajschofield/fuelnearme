@@ -8,7 +8,7 @@ import pandas as pd
 from fnme.constants import SORT_KV
 
 
-def filter_df(
+def process_stations(
     dframe: pd.DataFrame, arguments: argparse.Namespace, loc: Tuple[float, float]
 ) -> List[Dict[str, Any]]:
 
