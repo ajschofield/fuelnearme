@@ -6,6 +6,8 @@ import pandas as pd
 
 from fnme.constants import SORT_KV
 
+_PRICE_KEYS = ("e5_price", "e10_price", "diesel_price")
+
 
 def process_stations(
     dframe: pd.DataFrame, rad: int, loc: Tuple[float, float]
@@ -32,7 +34,7 @@ def process_stations(
         return R * 2 * np.arcsin(np.sqrt(a))
 
     def pence_to_pounds(col: pd.Series) -> pd.Series:
-        return (col / 100).round(2).where(col.notna(), other="N/A")
+        return (col / 100).round(2)
 
     df = bounding_box().copy()
 
@@ -49,11 +51,21 @@ def process_stations(
         diesel_price=pence_to_pounds(df["forecourts.fuel_price.B7S"]),
     )
 
-    return df.rename(columns={"forecourts.trading_name": "station_name"})[
-        ["station_name", "distance", "e5_price", "e10_price", "diesel_price"]
+    records = df.rename(columns={"forecourts.trading_name": "station_name"})[
+        ["station_name", *_PRICE_KEYS]
     ].to_dict(orient="records")
+
+    for record in records:
+        for key in _PRICE_KEYS:
+            v = record[key]
+            if isinstance(v, float) and math.isnan(v):
+                record[key] = None
+
+    return records
 
 
 def sort_stations(stations: list[dict], sort: str) -> list[dict]:
     sort_key = SORT_KV[sort]
-    return sorted(stations, key=lambda d: d[sort_key] if d[sort_key] != "N/A" else 999)
+    return sorted(
+        stations, key=lambda d: d[sort_key] if d[sort_key] is not None else float("inf")
+    )
