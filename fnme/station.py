@@ -1,4 +1,3 @@
-import argparse
 import math
 from typing import Any, Dict, List, Tuple
 
@@ -9,13 +8,13 @@ from fnme.constants import SORT_KV
 
 
 def process_stations(
-    dframe: pd.DataFrame, arguments: argparse.Namespace, loc: Tuple[float, float]
+    dframe: pd.DataFrame, rad: int, loc: Tuple[float, float]
 ) -> List[Dict[str, Any]]:
 
     def bounding_box() -> pd.DataFrame:
         lat, lon = loc
-        deg_lat = arguments.radius / 69.0
-        deg_lon = arguments.radius / (69.0 * math.cos(math.radians(lat)))
+        deg_lat = rad / 69.0
+        deg_lon = rad / (69.0 * math.cos(math.radians(lat)))
         return dframe[
             dframe["forecourts.location.latitude"].between(lat - deg_lat, lat + deg_lat)
             & dframe["forecourts.location.longitude"].between(
@@ -42,7 +41,7 @@ def process_stations(
         df["forecourts.location.longitude"].to_numpy(),
     ).round(1)
 
-    df = df[df["distance"] < arguments.radius]
+    df = df[df["distance"] < rad]
 
     df = df.assign(
         e5_price=pence_to_pounds(df["forecourts.fuel_price.E5"]),

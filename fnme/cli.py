@@ -49,7 +49,7 @@ def main():
 
     print(f"Last updated: {last_modified}")
 
-    df_filtered = process_stations(df, args, location)
+    df_filtered = process_stations(df, args.radius, location)
 
     sorted_stations_list = sort_stations(df_filtered, args.sort)
 
