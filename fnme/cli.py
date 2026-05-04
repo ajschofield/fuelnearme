@@ -1,6 +1,6 @@
 import argparse
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 from tabulate import tabulate
 
@@ -36,7 +36,7 @@ def _fmt_price(v: float | None) -> str:
     return f"{v:.2f}" if v is not None else "N/A"
 
 
-def output_stations(stations: List[Dict[str, Any]]) -> None:
+def output_stations(stations: list[dict[str, Any]]) -> None:
     if not stations:
         print("[*] No stations found.")
         return

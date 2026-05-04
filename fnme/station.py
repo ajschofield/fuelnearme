@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ _PRICE_KEYS = ("e5_price", "e10_price", "diesel_price")
 
 
 def _bounding_box(
-    dframe: pd.DataFrame, loc: Tuple[float, float], rad: int
+    dframe: pd.DataFrame, loc: tuple[float, float], rad: int
 ) -> pd.DataFrame:
     lat, lon = loc
     deg_lat = rad / 69.0
@@ -26,7 +26,7 @@ def _bounding_box(
 
 
 def _haversine_miles(
-    loc: Tuple[float, float], lat2: np.ndarray, lon2: np.ndarray
+    loc: tuple[float, float], lat2: np.ndarray, lon2: np.ndarray
 ) -> np.ndarray:
     R = 3958.8
     lat1, lon1 = np.radians(loc[0]), np.radians(loc[1])
@@ -45,8 +45,8 @@ def _pence_to_pounds(col: pd.Series) -> pd.Series:
 
 
 def process_stations(
-    dframe: pd.DataFrame, rad: int, loc: Tuple[float, float]
-) -> List[Dict[str, Any]]:
+    dframe: pd.DataFrame, rad: int, loc: tuple[float, float]
+) -> list[dict[str, Any]]:
 
     df = _bounding_box(dframe, loc, rad).copy()
 
