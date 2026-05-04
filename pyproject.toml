@@ -22,7 +22,7 @@ include = ["fnme"]
 
 [tool.ruff]
 line-length = 79
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
@@ -31,3 +31,8 @@ select = ["E", "F", "I", "UP"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]
