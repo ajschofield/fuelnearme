@@ -6,7 +6,7 @@ from tabulate import tabulate
 
 from fnme.constants import SORT_KV
 from fnme.data import get_latest_data
-from fnme.exceptions import LocationError
+from fnme.exceptions import DataFetchError, LocationError
 from fnme.geo import get_location
 from fnme.station import process_stations, sort_stations
 
@@ -64,7 +64,17 @@ def main():
         print(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
-    df, last_modified = get_latest_data()
+    try:
+        df, last_modified = get_latest_data()
+    except DataFetchError as e:
+        print(f"Error: {e.message}")
+        print(
+            "Check your internet connection or verify that this script can access the cache location."
+        )
+        sys.exit(1)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        sys.exit(1)
 
     print(f"Last updated: {last_modified}")
 
