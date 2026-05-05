@@ -1,10 +1,18 @@
+from geopy import exc
 from geopy.geocoders import Nominatim
 from geopy.location import Location
+
+from fnme.exceptions import LocationError
 
 
 def get_location(address: str) -> tuple[float, float]:
     geolocator = Nominatim(user_agent="FuelNearMe")
-    result = geolocator.geocode(address)
+
+    try:
+        result = geolocator.geocode(address)
+    except exc.GeopyError as e:
+        raise LocationError(message=f"Location service error: {e}")
+
     if not isinstance(result, Location):
-        raise ValueError(f"Failed to get location from address: '{address}'")
+        raise LocationError(message=f"Unknown location: '{address}'")
     return (result.latitude, result.longitude)
