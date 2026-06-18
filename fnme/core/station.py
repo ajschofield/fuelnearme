@@ -6,7 +6,7 @@ import pandas as pd
 
 from fnme.constants import SORT_KV
 
-_PRICE_KEYS = ("e5_price", "e10_price", "diesel_price")
+_PRICE_KEYS = ("e5_price", "e10_price", "diesel_price", "distance")
 
 
 def _bounding_box(
