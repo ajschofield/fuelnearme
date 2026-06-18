@@ -22,11 +22,12 @@ def create_tables():
         create_fuel_prices_table = sql.text(
             """
             CREATE TABLE IF NOT EXISTS fuel_prices (
-                node_id TEXT REFERENCES stations(node_id) PRIMARY KEY,
+                node_id TEXT REFERENCES stations(node_id),
+                last_updated TIMESTAMP NOT NULL,
                 e5_price INTEGER,
                 e10_price INTEGER,
                 diesel_price INTEGER,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                PRIMARY KEY (node_id, last_updated)
             );
             """
         )
