@@ -5,10 +5,10 @@ from typing import Any
 from tabulate import tabulate
 
 from fnme.constants import SORT_KV
-from fnme.data import get_latest_data
+from fnme.core.data import get_latest_data
+from fnme.core.geo import get_location
+from fnme.core.station import process_stations, sort_stations
 from fnme.exceptions import DataFetchError, LocationError
-from fnme.geo import get_location
-from fnme.station import process_stations, sort_stations
 
 _PRICE_COLS = {
     "e5_price": "E5 (£/L)",
