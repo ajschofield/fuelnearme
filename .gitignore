@@ -223,3 +223,6 @@ __marimo__/
 
 # Ignore notes
 .dev_notes/
+
+# Ignore macOS files
+.DS_Store
