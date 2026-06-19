@@ -1,6 +1,7 @@
 import os
 import sqlalchemy as sql
 
+
 def create_tables(db):
     with db.connect() as conn:
         create_stations_table = sql.text(
