@@ -1,12 +1,8 @@
 import os
 import sqlalchemy as sql
 
-DATABASE_URL = os.environ["DATABASE_URL"]
-
-engine = sql.create_engine(DATABASE_URL, echo=False)
-
-def create_tables():
-    with engine.connect() as conn:
+def create_tables(db):
+    with db.connect() as conn:
         create_stations_table = sql.text(
             """
             CREATE TABLE IF NOT EXISTS stations (
