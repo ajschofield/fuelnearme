@@ -71,3 +71,25 @@ def ingest_prices(engine, prices: list[dict]) -> int:
         conn.commit()
 
     return len(prices)
+
+
+def start_pipeline_run(engine, is_incremental: bool) -> int:
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            INSERT INTO raw.pipeline_runs (is_incremental)
+            VALUES (:is_incremental)
+            RETURNING id
+        """), {"is_incremental": is_incremental})
+        run_id = result.fetchone()[0]
+        conn.commit()
+    return run_id
+
+
+def complete_pipeline_run(engine, run_id: int) -> None:
+    with engine.connect() as conn:
+        conn.execute(sql.text("""
+            UPDATE raw.pipeline_runs
+            SET run_completed_at = NOW()
+            WHERE id = :id
+        """), {"id": run_id})
+        conn.commit()

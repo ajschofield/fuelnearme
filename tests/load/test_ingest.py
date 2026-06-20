@@ -1,6 +1,11 @@
 import sqlalchemy as sql
 
-from load.ingest import ingest_prices, ingest_stations
+from load.ingest import (
+    complete_pipeline_run,
+    ingest_prices,
+    ingest_stations,
+    start_pipeline_run,
+)
 
 STATION_1 = {
     "node_id": "abc123",
@@ -110,3 +115,36 @@ def test_ingest_prices_appends_on_repeat(pg_engine):
 
 def test_ingest_prices_empty_list_returns_zero(pg_engine):
     assert ingest_prices(pg_engine, []) == 0
+
+
+def test_start_pipeline_run_returns_integer_id(pg_engine):
+    run_id = start_pipeline_run(pg_engine, is_incremental=False)
+    assert isinstance(run_id, int) and run_id > 0
+
+
+def test_start_pipeline_run_records_is_incremental(pg_engine):
+    run_id = start_pipeline_run(pg_engine, is_incremental=True)
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT is_incremental FROM raw.pipeline_runs WHERE id = :id"
+        ), {"id": run_id})
+        assert result.fetchone()[0] is True
+
+
+def test_start_pipeline_run_leaves_completed_at_null(pg_engine):
+    run_id = start_pipeline_run(pg_engine, is_incremental=False)
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT run_completed_at FROM raw.pipeline_runs WHERE id = :id"
+        ), {"id": run_id})
+        assert result.fetchone()[0] is None
+
+
+def test_complete_pipeline_run_sets_completed_at(pg_engine):
+    run_id = start_pipeline_run(pg_engine, is_incremental=False)
+    complete_pipeline_run(pg_engine, run_id)
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT run_completed_at FROM raw.pipeline_runs WHERE id = :id"
+        ), {"id": run_id})
+        assert result.fetchone()[0] is not None
