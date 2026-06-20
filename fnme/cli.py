@@ -5,7 +5,7 @@ from typing import Any
 from tabulate import tabulate
 
 from fnme.constants import SORT_KV
-from fnme.core.data import get_latest_data
+from fnme.core.data import get_latest_data, verify_csv_data
 from fnme.core.geo import get_location
 from fnme.core.station import process_stations, sort_stations
 from fnme.exceptions import DataFetchError, LocationError
@@ -66,6 +66,8 @@ def main():
 
     try:
         df, last_modified = get_latest_data()
+        if verify_csv_data(df):
+            print("[✔] Data verification passed.")
     except DataFetchError as e:
         print(f"Error: {e.message}")
         print(
