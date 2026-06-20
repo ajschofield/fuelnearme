@@ -1,0 +1,115 @@
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from extract.fetch import fetch_prices_batch, fetch_stations_batch
+
+STATIONS_BATCH = [
+    {
+        "node_id": "abc123",
+        "public_phone_number": None,
+        "trading_name": "Test Station",
+        "is_same_trading_and_brand_name": True,
+        "brand_name": "Test Brand",
+        "temporary_closure": False,
+        "permanent_closure": False,
+        "permanent_closure_date": None,
+        "is_motorway_service_station": False,
+        "is_supermarket_service_station": False,
+        "location": {
+            "address_line_1": "1 Test Street",
+            "address_line_2": None,
+            "city": "Leeds",
+            "country": "England",
+            "county": "West Yorkshire",
+            "postcode": "LS1 1AA",
+            "latitude": 53.7997,
+            "longitude": -1.5492,
+        },
+        "amenities": ["car_wash", "customer_toilets"],
+        "opening_times": {},
+        "fuel_types": ["E5", "E10"],
+    }
+]
+
+PRICES_BATCH = [
+    {
+        "node_id": "abc123",
+        "public_phone_number": None,
+        "trading_name": "Test Station",
+        "fuel_prices": [
+            {
+                "fuel_type": "E5",
+                "price": 159.9,
+                "price_last_updated": "2026-02-17T16:03:04.938Z",
+                "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z",
+            },
+            {
+                "fuel_type": "E10",
+                "price": 132.9,
+                "price_last_updated": "2026-02-17T16:03:04.938Z",
+                "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z",
+            },
+        ],
+    }
+]
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_stations_batch_calls_correct_url(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: STATIONS_BATCH)
+    fetch_stations_batch(1)
+    url = mock_get.call_args[0][0]
+    assert url == "https://www.fuel-finder.service.gov.uk/api/v1/pfs"
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_stations_batch_sends_batch_number(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: STATIONS_BATCH)
+    fetch_stations_batch(1)
+    params = mock_get.call_args[1]["params"]
+    assert params["batch-number"] == 1
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_stations_batch_returns_parsed_json(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: STATIONS_BATCH)
+    result = fetch_stations_batch(1)
+    assert result == STATIONS_BATCH
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_prices_batch_calls_correct_url(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: PRICES_BATCH)
+    fetch_prices_batch(1)
+    url = mock_get.call_args[0][0]
+    assert url == "https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices"
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_prices_batch_sends_batch_number(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: PRICES_BATCH)
+    fetch_prices_batch(1)
+    params = mock_get.call_args[1]["params"]
+    assert params["batch-number"] == 1
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_prices_batch_returns_parsed_json(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: PRICES_BATCH)
+    result = fetch_prices_batch(1)
+    assert result == PRICES_BATCH
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_stations_batch_raises_on_http_error(mock_get):
+    mock_get.return_value = MagicMock(status_code=500)
+    with pytest.raises(RuntimeError):
+        fetch_stations_batch(1)
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_prices_batch_raises_on_http_error(mock_get):
+    mock_get.return_value = MagicMock(status_code=500)
+    with pytest.raises(RuntimeError):
+        fetch_prices_batch(1)
