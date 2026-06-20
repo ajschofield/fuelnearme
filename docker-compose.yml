@@ -51,6 +51,19 @@ services:
       postgres:
         condition: service_healthy
 
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      DATABASE_URL: postgresql://fuelnearme:fuelnearme@postgres:5432/fuelnearme
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pg_data:
   pipeline_data:
