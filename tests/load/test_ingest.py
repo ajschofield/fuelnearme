@@ -2,6 +2,7 @@ import sqlalchemy as sql
 
 from load.ingest import (
     complete_pipeline_run,
+    get_last_run_timestamp,
     ingest_prices,
     ingest_stations,
     start_pipeline_run,
@@ -148,3 +149,33 @@ def test_complete_pipeline_run_sets_completed_at(pg_engine):
             "SELECT run_completed_at FROM raw.pipeline_runs WHERE id = :id"
         ), {"id": run_id})
         assert result.fetchone()[0] is not None
+
+
+def test_get_last_run_timestamp_returns_none_with_no_runs(pg_engine):
+    assert get_last_run_timestamp(pg_engine) is None
+
+
+def test_get_last_run_timestamp_returns_none_if_no_completed_runs(pg_engine):
+    start_pipeline_run(pg_engine, is_incremental=False)
+    assert get_last_run_timestamp(pg_engine) is None
+
+
+def test_get_last_run_timestamp_returns_completed_at(pg_engine):
+    run_id = start_pipeline_run(pg_engine, is_incremental=False)
+    complete_pipeline_run(pg_engine, run_id)
+    result = get_last_run_timestamp(pg_engine)
+    assert result is not None
+    assert isinstance(result, str)
+
+
+def test_get_last_run_timestamp_returns_most_recent(pg_engine):
+    run_id_1 = start_pipeline_run(pg_engine, is_incremental=False)
+    complete_pipeline_run(pg_engine, run_id_1)
+    run_id_2 = start_pipeline_run(pg_engine, is_incremental=False)
+    complete_pipeline_run(pg_engine, run_id_2)
+    with pg_engine.connect() as conn:
+        row = conn.execute(sql.text(
+            "SELECT run_completed_at FROM raw.pipeline_runs WHERE id = :id"
+        ), {"id": run_id_2}).fetchone()
+        expected = row[0].isoformat()
+    assert get_last_run_timestamp(pg_engine) == expected

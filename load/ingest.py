@@ -93,3 +93,15 @@ def complete_pipeline_run(engine, run_id: int) -> None:
             WHERE id = :id
         """), {"id": run_id})
         conn.commit()
+
+
+def get_last_run_timestamp(engine) -> str | None:
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            SELECT run_completed_at FROM raw.pipeline_runs
+            WHERE run_completed_at IS NOT NULL
+            ORDER BY run_completed_at DESC
+            LIMIT 1
+        """))
+        row = result.fetchone()
+        return row[0].isoformat() if row else None
