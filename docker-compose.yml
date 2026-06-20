@@ -15,5 +15,28 @@ services:
       timeout: 5s
       retries: 5
 
+  extract:
+    build:
+      context: .
+      dockerfile: extract/Dockerfile
+    volumes:
+      - pipeline_data:/data
+    environment:
+      OUTPUT_DIR: /data
+
+  load:
+    build:
+      context: .
+      dockerfile: load/Dockerfile
+    volumes:
+      - pipeline_data:/data
+    environment:
+      INPUT_DIR: /data
+      DATABASE_URL: postgresql://fuelnearme:fuelnearme@postgres:5432/fuelnearme
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pg_data:
+  pipeline_data:
