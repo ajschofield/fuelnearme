@@ -41,6 +41,7 @@ addopts = "--import-mode=importlib"
 [dependency-groups]
 dev = [
     "coverage>=7.14.1",
+    "dbt-postgres>=1.10.1",
     "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.12",
