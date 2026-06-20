@@ -103,6 +103,40 @@ def test_get_latest_data_should_raise_for_bad_status(monkeypatch, tmp_path):
         get_latest_data()
 
 
+def test_get_latest_data_should_retry_transient_request_failures(
+    monkeypatch, tmp_path
+):
+    from fnme.core import data as data_module
+
+    monkeypatch.setattr(
+        data_module,
+        "user_cache_path",
+        lambda **kwargs: tmp_path,
+    )
+    monkeypatch.setattr(data_module.time, "sleep", lambda seconds: None)
+
+    calls = {"count": 0}
+
+    class MockResponse:
+        status_code = 200
+        headers = {"Last-Modified": "Wed, 21 Oct 2020 07:28:00 GMT"}
+        text = "a,b\n1,2\n"
+
+    def mock_get(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] < 3:
+            raise data_module.requests.RequestException("temporary failure")
+        return MockResponse()
+
+    monkeypatch.setattr(data_module.requests, "get", mock_get)
+
+    df, last_modified = get_latest_data()
+
+    assert calls["count"] == 3
+    assert not df.empty
+    assert last_modified == "Wed, 21 Oct 2020 07:28:00 GMT"
+
+
 def make_valid_dataframe():
     location_prefix = "forecourts.location."
     price_prefix = "forecourts.fuel_price."

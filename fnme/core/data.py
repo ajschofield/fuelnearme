@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +9,8 @@ from platformdirs import user_cache_path
 
 from fnme.constants import ENDPOINT, HEADERS
 from fnme.exceptions import DataFetchError, InvalidDataError
+
+_FETCH_RETRIES = 3
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
@@ -49,12 +52,33 @@ def get_latest_data() -> tuple[pd.DataFrame, str | None]:
         ),
     }
 
-    try:
-        response = requests.get(
-            ENDPOINT, headers=conditional_headers, timeout=10
-        )
-    except requests.RequestException as e:
-        raise DataFetchError(message=f"GET request failed: {e}")
+    response = None
+    last_error: Exception | None = None
+
+    for attempt in range(_FETCH_RETRIES):
+        try:
+            response = requests.get(
+                ENDPOINT, headers=conditional_headers, timeout=10
+            )
+            if response.status_code < 500:
+                break
+        except requests.RequestException as e:
+            last_error = e
+        else:
+            if response.status_code < 500:
+                break
+            last_error = DataFetchError(
+                message=(
+                    f"Failed to fetch data. Status code: "
+                    f"{response.status_code}"
+                )
+            )
+
+        if attempt < _FETCH_RETRIES - 1:
+            time.sleep(2**attempt)
+
+    if response is None:
+        raise DataFetchError(message=f"GET request failed: {last_error}")
 
     if response.status_code == 304:
         print(f"[*] Using cached data. Last modified: {cached_last_modified}")
