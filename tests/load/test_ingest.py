@@ -1,6 +1,6 @@
 import sqlalchemy as sql
 
-from load.ingest import ingest_stations
+from load.ingest import ingest_prices, ingest_stations
 
 STATION_1 = {
     "node_id": "abc123",
@@ -55,3 +55,58 @@ def test_ingest_stations_upserts_on_conflict(pg_engine):
 
 def test_ingest_stations_empty_list_returns_zero(pg_engine):
     assert ingest_stations(pg_engine, []) == 0
+
+
+PRICE_1 = {
+    "node_id": "abc123",
+    "public_phone_number": None,
+    "trading_name": "Test Station",
+    "fuel_prices": [
+        {
+            "fuel_type": "E5",
+            "price": 159.9,
+            "price_last_updated": "2026-02-17T16:03:04.938Z",
+            "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z",
+        },
+        {
+            "fuel_type": "E10",
+            "price": 132.9,
+            "price_last_updated": "2026-02-17T16:03:04.938Z",
+            "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z",
+        },
+    ],
+}
+
+PRICE_2 = {
+    **PRICE_1,
+    "node_id": "def456",
+    "trading_name": "Second Station",
+}
+
+
+def test_ingest_prices_returns_count(pg_engine):
+    count = ingest_prices(pg_engine, [PRICE_1, PRICE_2])
+    assert count == 2
+
+
+def test_ingest_prices_persists_records(pg_engine):
+    ingest_prices(pg_engine, [PRICE_1])
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT trading_name FROM raw.fuel_prices WHERE node_id = :id"
+        ), {"id": PRICE_1["node_id"]})
+        assert result.fetchone()[0] == "Test Station"
+
+
+def test_ingest_prices_appends_on_repeat(pg_engine):
+    ingest_prices(pg_engine, [PRICE_1])
+    ingest_prices(pg_engine, [PRICE_1])
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT COUNT(*) FROM raw.fuel_prices WHERE node_id = :id"
+        ), {"id": PRICE_1["node_id"]})
+        assert result.fetchone()[0] == 2
+
+
+def test_ingest_prices_empty_list_returns_zero(pg_engine):
+    assert ingest_prices(pg_engine, []) == 0

@@ -49,3 +49,25 @@ def ingest_stations(engine, stations: list[dict]) -> int:
         conn.commit()
 
     return len(stations)
+
+
+def ingest_prices(engine, prices: list[dict]) -> int:
+    if not prices:
+        return 0
+
+    with engine.connect() as conn:
+        for price in prices:
+            conn.execute(sql.text("""
+                INSERT INTO raw.fuel_prices (
+                    node_id, public_phone_number, trading_name, fuel_prices
+                ) VALUES (
+                    :node_id, :public_phone_number, :trading_name,
+                    CAST(:fuel_prices AS jsonb)
+                )
+            """), {
+                **price,
+                "fuel_prices": json.dumps(price["fuel_prices"]),
+            })
+        conn.commit()
+
+    return len(prices)
