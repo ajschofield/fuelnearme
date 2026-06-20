@@ -2,7 +2,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from extract.fetch import fetch_prices_batch, fetch_stations_batch
+from extract.fetch import (
+    fetch_all_prices,
+    fetch_all_stations,
+    fetch_prices_batch,
+    fetch_stations_batch,
+)
 
 STATIONS_BATCH = [
     {
@@ -113,3 +118,90 @@ def test_fetch_prices_batch_raises_on_http_error(mock_get):
     mock_get.return_value = MagicMock(status_code=500)
     with pytest.raises(RuntimeError):
         fetch_prices_batch(1)
+
+
+STATIONS_BATCH_2 = [
+    {
+        "node_id": "def456",
+        "public_phone_number": "+441234567890",
+        "trading_name": "Second Station",
+        "is_same_trading_and_brand_name": False,
+        "brand_name": "Other Brand",
+        "temporary_closure": False,
+        "permanent_closure": False,
+        "permanent_closure_date": None,
+        "is_motorway_service_station": True,
+        "is_supermarket_service_station": False,
+        "location": {
+            "address_line_1": "2 Test Road",
+            "address_line_2": None,
+            "city": "Manchester",
+            "country": "England",
+            "county": "Greater Manchester",
+            "postcode": "M1 1AA",
+            "latitude": 53.4808,
+            "longitude": -2.2426,
+        },
+        "amenities": ["adblue_pumps"],
+        "opening_times": {},
+        "fuel_types": ["E5", "B7_STANDARD"],
+    }
+]
+
+PRICES_BATCH_2 = [
+    {
+        "node_id": "def456",
+        "public_phone_number": "+441234567890",
+        "trading_name": "Second Station",
+        "fuel_prices": [
+            {
+                "fuel_type": "E5",
+                "price": 155.9,
+                "price_last_updated": "2026-02-17T16:03:04.938Z",
+                "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z",
+            },
+        ],
+    }
+]
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_stations_combines_batches(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: STATIONS_BATCH),
+        MagicMock(status_code=200, json=lambda: STATIONS_BATCH_2),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    result = fetch_all_stations()
+    assert result == STATIONS_BATCH + STATIONS_BATCH_2
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_stations_stops_on_empty_batch(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: STATIONS_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_stations()
+    assert mock_get.call_count == 2
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_prices_combines_batches(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: PRICES_BATCH),
+        MagicMock(status_code=200, json=lambda: PRICES_BATCH_2),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    result = fetch_all_prices()
+    assert result == PRICES_BATCH + PRICES_BATCH_2
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_prices_stops_on_empty_batch(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: PRICES_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_prices()
+    assert mock_get.call_count == 2

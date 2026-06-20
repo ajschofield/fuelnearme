@@ -29,3 +29,25 @@ def fetch_prices_batch(
     batch_number: int, effective_start_timestamp: str | None = None
 ) -> list[dict]:
     return _get_batch(f"{_BASE_URL}/pfs/fuel-prices", batch_number, effective_start_timestamp)
+
+
+def _fetch_all(
+    fetch_fn: callable, effective_start_timestamp: str | None = None
+) -> list[dict]:
+    results = []
+    batch_number = 1
+    while True:
+        batch = fetch_fn(batch_number, effective_start_timestamp)
+        if not batch:
+            break
+        results.extend(batch)
+        batch_number += 1
+    return results
+
+
+def fetch_all_stations(effective_start_timestamp: str | None = None) -> list[dict]:
+    return _fetch_all(fetch_stations_batch, effective_start_timestamp)
+
+
+def fetch_all_prices(effective_start_timestamp: str | None = None) -> list[dict]:
+    return _fetch_all(fetch_prices_batch, effective_start_timestamp)
