@@ -50,21 +50,30 @@ def test_get_location_mocked_non_location_result(monkeypatch):
         get_location("London, UK")
 
 
-def test_get_location_special_characters_address():
-    address = "!@#$%^&*()"
-    try:
-        get_location(address)
-        assert False
-    except LocationError as e:
-        assert isinstance(e, LocationError)
+def test_get_location_special_characters_address(monkeypatch):
+    def none(self, addr, *args, **kwargs):
+        return None
+
+    monkeypatch.setattr(Nominatim, "geocode", none)
+    with pytest.raises(LocationError):
+        get_location("!@#$%^&*()")
 
 
-def test_get_location_long_address():
-    address = "This address doesn't exist, and it doesn't exist, and it \
-    doesn't exist, and it doesn't exist, and it doesn't exist, and it doesn't \
-    exist, and it doesn't exist, and it doesn't exist, and it doesn't exist"
-    try:
+def test_get_location_long_address(monkeypatch):
+    def none(self, addr, *args, **kwargs):
+        return None
+
+    monkeypatch.setattr(Nominatim, "geocode", none)
+    address = "This address doesn't exist" * 10
+    with pytest.raises(LocationError):
         get_location(address)
-        assert False
-    except LocationError as e:
-        assert isinstance(e, LocationError)
+
+
+def test_get_location_geopy_error(monkeypatch):
+    def fail(self, addr, *args, **kwargs):
+        raise exc.GeopyError("cooked")
+
+    monkeypatch.setattr(Nominatim, "geocode", fail)
+    with pytest.raises(LocationError) as ei:
+        get_location("London, UK")
+    assert "Location service error: cooked" in str(ei.value)
