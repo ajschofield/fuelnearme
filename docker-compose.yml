@@ -37,6 +37,20 @@ services:
       postgres:
         condition: service_healthy
 
+  transform:
+    build:
+      context: .
+      dockerfile: transform/Dockerfile
+    environment:
+      DBT_HOST: postgres
+      DBT_PORT: "5432"
+      DBT_USER: fuelnearme
+      DBT_PASSWORD: fuelnearme
+      DBT_DBNAME: fuelnearme
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pg_data:
   pipeline_data:
