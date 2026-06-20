@@ -8,6 +8,20 @@ sources:
       - name: fuel_prices
 
 models:
+  - name: stg_fuel_prices
+    columns:
+      - name: node_id
+        tests:
+          - not_null
+      - name: fuel_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["E5", "E10", "B7_STANDARD", "B7_PREMIUM", "B10", "HVO"]
+      - name: price_pence
+        tests:
+          - not_null
+
   - name: stg_stations
     columns:
       - name: node_id
@@ -103,3 +117,38 @@ unit_tests:
           city: "Leeds"
           latitude: 53.7997
           longitude: -1.5492
+
+  - name: test_fuel_prices_array_unnested_to_rows
+    model: stg_fuel_prices
+    given:
+      - input: source('raw', 'fuel_prices')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            fuel_prices: '[{"fuel_type": "E5", "price": 159.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}, {"fuel_type": "E10", "price": 132.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "E5"
+          price_pence: 159.9
+        - node_id: "abc123"
+          fuel_type: "E10"
+          price_pence: 132.9
+
+  - name: test_single_fuel_type_produces_one_row
+    model: stg_fuel_prices
+    given:
+      - input: source('raw', 'fuel_prices')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            fuel_prices: '[{"fuel_type": "B7_STANDARD", "price": 141.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "B7_STANDARD"
+          price_pence: 141.9
