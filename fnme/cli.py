@@ -47,7 +47,7 @@ def output_stations(stations: list[dict[str, Any]]) -> None:
         for s in stations
     ]
 
-    print(tabulate(rows, headers=_HEADERS, floatfmt="1.f"))
+    print(tabulate(rows, headers=_HEADERS, floatfmt=".1f"))
 
 
 def main():

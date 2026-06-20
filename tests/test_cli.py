@@ -61,7 +61,7 @@ def test_output_stations_should_format_rows(monkeypatch):
     assert captured["rows"][0]["e5_price"] == "1.23"
     assert captured["rows"][0]["e10_price"] == "1.34"
     assert captured["rows"][0]["diesel_price"] == "1.46"
-    assert captured["floatfmt"] == "1.f"
+    assert captured["floatfmt"] == ".1f"
 
 
 def test_main_should_run_happy_path(monkeypatch):
@@ -89,11 +89,23 @@ def test_main_should_run_happy_path(monkeypatch):
 
     monkeypatch.setattr(cli, "parse_args", lambda: args)
     monkeypatch.setattr(cli, "get_location", lambda address: (51.5, -0.1))
-    monkeypatch.setattr(cli, "get_latest_data", lambda: (df, "Wed, 21 Oct 2020 07:28:00 GMT"))
+    monkeypatch.setattr(
+        cli,
+        "get_latest_data",
+        lambda: (df, "Wed, 21 Oct 2020 07:28:00 GMT"),
+    )
     monkeypatch.setattr(cli, "verify_csv_data", lambda data: True)
-    monkeypatch.setattr(cli, "process_stations", lambda data, radius, location: stations)
+    monkeypatch.setattr(
+        cli,
+        "process_stations",
+        lambda data, radius, location: stations,
+    )
     monkeypatch.setattr(cli, "sort_stations", lambda items, sort: items)
-    monkeypatch.setattr(cli, "output_stations", lambda items: captured.setdefault("items", items))
+    monkeypatch.setattr(
+        cli,
+        "output_stations",
+        lambda items: captured.setdefault("items", items),
+    )
 
     cli.main()
 
@@ -143,7 +155,11 @@ def test_main_should_exit_for_invalid_data_error(monkeypatch, capsys):
 
     monkeypatch.setattr(cli, "parse_args", lambda: args)
     monkeypatch.setattr(cli, "get_location", lambda address: (51.5, -0.1))
-    monkeypatch.setattr(cli, "get_latest_data", lambda: (df, "Wed, 21 Oct 2020 07:28:00 GMT"))
+    monkeypatch.setattr(
+        cli,
+        "get_latest_data",
+        lambda: (df, "Wed, 21 Oct 2020 07:28:00 GMT"),
+    )
     monkeypatch.setattr(
         cli,
         "verify_csv_data",
