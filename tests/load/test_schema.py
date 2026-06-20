@@ -1,5 +1,5 @@
-from fnme.db.schema import create_tables
-from fnme.db.query import run_query
+from load.schema import create_tables
+from load.query import run_query
 from sqlalchemy import create_engine
 
 
