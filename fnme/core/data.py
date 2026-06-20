@@ -1,4 +1,3 @@
-import csv
 from pathlib import Path
 
 import pandas as pd
@@ -42,7 +41,9 @@ def get_latest_data() -> tuple[pd.DataFrame, str | None]:
 
     if response.status_code != 200:
         raise DataFetchError(
-            message=f"Failed to fetch data. Status code: {response.status_code}"
+            message=(
+                f"Failed to fetch data. Status code: {response.status_code}"
+            )
         )
 
     print("[!] Cache is stale. Refreshing.")
@@ -62,7 +63,7 @@ def get_latest_data() -> tuple[pd.DataFrame, str | None]:
 
 
 def verify_csv_data(df: pd.DataFrame) -> None:
-    required_columns = [
+    required_columns = sorted([
         "forecourt_update_timestamp",
         "forecourts.node_id",
         "forecourts.trading_name",
@@ -131,15 +132,19 @@ def verify_csv_data(df: pd.DataFrame) -> None:
         "forecourts.amenities.water_filling",
         "forecourts.amenities.twenty_four_hour_fuel",
         "forecourts.amenities.customer_toilets",
-    ].sort()
+    ])
 
-    columns_in_df = list(df.columns).sort()
-    
+    columns_in_df = sorted(list(df.columns))
+
     if required_columns != columns_in_df:
+        required_set = set(required_columns)
+        columns_set = set(columns_in_df)
         raise InvalidDataError(
-            message=f"DataFrame columns do not match the expected schema. \
-            Missing columns: {required_columns - columns_in_df}, \
-            Extra columns: {columns_in_df - required_columns}"
+            message=(
+                "DataFrame columns do not match the expected schema. "
+                f"Missing columns: {sorted(required_set - columns_set)}, "
+                f"Extra columns: {sorted(columns_set - required_set)}"
+            )
         )
-    
+
     return True
