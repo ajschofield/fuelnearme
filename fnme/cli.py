@@ -5,10 +5,10 @@ from typing import Any
 from tabulate import tabulate
 
 from fnme.constants import SORT_KV
-from fnme.data import get_latest_data
-from fnme.exceptions import DataFetchError, LocationError
-from fnme.geo import get_location
-from fnme.station import process_stations, sort_stations
+from fnme.core.data import get_latest_data, verify_csv_data
+from fnme.core.geo import get_location
+from fnme.core.station import process_stations, sort_stations
+from fnme.exceptions import DataFetchError, InvalidDataError, LocationError
 
 _PRICE_COLS = {
     "e5_price": "E5 (£/L)",
@@ -47,7 +47,7 @@ def output_stations(stations: list[dict[str, Any]]) -> None:
         for s in stations
     ]
 
-    print(tabulate(rows, headers=_HEADERS, floatfmt="1.f"))
+    print(tabulate(rows, headers=_HEADERS, floatfmt=".1f"))
 
 
 def main():
@@ -66,11 +66,18 @@ def main():
 
     try:
         df, last_modified = get_latest_data()
+        if verify_csv_data(df):
+            print("[✔] Data verification passed.")
     except DataFetchError as e:
         print(f"Error: {e.message}")
         print(
-            "Check your internet connection or verify that this script can access the cache location."
+            "Check your internet connection or verify that this script can "
+            "access the cache location."
         )
+        sys.exit(1)
+    except InvalidDataError as e:
+        print(f"Error: {e.message}")
+        print("Verify the downloaded CSV matches the expected schema.")
         sys.exit(1)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
