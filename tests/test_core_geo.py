@@ -21,13 +21,13 @@ def test_get_location_valid_address(monkeypatch):
     assert lon == -0.1
 
 
-def test_get_location_invalid_address():
-    address = "This is not a real address"
-    try:
-        get_location(address)
-        assert False
-    except LocationError as e:
-        assert isinstance(e, LocationError)
+def test_get_location_invalid_address(monkeypatch):
+    def none(self, addr, *args, **kwargs):
+        return None
+
+    monkeypatch.setattr(Nominatim, "geocode", none)
+    with pytest.raises(LocationError):
+        get_location("This isn't a real address.")
 
 
 def test_get_location_non_string_address():
