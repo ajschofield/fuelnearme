@@ -205,3 +205,47 @@ def test_fetch_all_prices_stops_on_empty_batch(mock_get):
     ]
     fetch_all_prices()
     assert mock_get.call_count == 2
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_stations_passes_timestamp(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: STATIONS_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_stations(effective_start_timestamp="2026-06-01 00:00:00")
+    params = mock_get.call_args_list[0][1]["params"]
+    assert params["effective-start-timestamp"] == "2026-06-01 00:00:00"
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_prices_passes_timestamp(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: PRICES_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_prices(effective_start_timestamp="2026-06-01 00:00:00")
+    params = mock_get.call_args_list[0][1]["params"]
+    assert params["effective-start-timestamp"] == "2026-06-01 00:00:00"
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_stations_omits_timestamp_when_none(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: STATIONS_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_stations()
+    params = mock_get.call_args_list[0][1]["params"]
+    assert "effective-start-timestamp" not in params
+
+
+@patch("extract.fetch.requests.get")
+def test_fetch_all_prices_omits_timestamp_when_none(mock_get):
+    mock_get.side_effect = [
+        MagicMock(status_code=200, json=lambda: PRICES_BATCH),
+        MagicMock(status_code=200, json=lambda: []),
+    ]
+    fetch_all_prices()
+    params = mock_get.call_args_list[0][1]["params"]
+    assert "effective-start-timestamp" not in params
