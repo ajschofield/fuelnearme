@@ -40,6 +40,11 @@ def get_latest_data() -> tuple[pd.DataFrame, str | None]:
         print(f"[*] Using cached data. Last modified: {cached_last_modified}")
         return pd.read_csv(csv_path), cached_last_modified
 
+    if response.status_code != 200:
+        raise DataFetchError(
+            message=f"Failed to fetch data. Status code: {response.status_code}"
+        )
+
     print("[!] Cache is stale. Refreshing.")
 
     last_modified = response.headers.get("Last-Modified")
