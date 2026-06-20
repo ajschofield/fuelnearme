@@ -193,9 +193,6 @@ def test_verify_csv_data_should_pass_with_valid_dataframe():
     assert verify_csv_data(df) is True
 
 
-@pytest.mark.xfail(
-    reason="verify_csv_data does not reject schema mismatches yet"
-)
 def test_verify_csv_data_should_fail_with_missing_column():
     df = make_valid_dataframe().drop(columns=["forecourts.location.country"])
 
@@ -203,9 +200,6 @@ def test_verify_csv_data_should_fail_with_missing_column():
         verify_csv_data(df)
 
 
-@pytest.mark.xfail(
-    reason="verify_csv_data does not reject schema mismatches yet"
-)
 def test_verify_csv_data_should_fail_with_extra_column():
     df = make_valid_dataframe()
     df["extra.column"] = ["value"]
