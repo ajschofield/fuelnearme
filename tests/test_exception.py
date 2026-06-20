@@ -1,5 +1,4 @@
 import pytest
-from pygments.unistring import Lo
 
 from fnme.exceptions import DataFetchError, InvalidDataError, LocationError
 
