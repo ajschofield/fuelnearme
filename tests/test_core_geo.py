@@ -1,17 +1,24 @@
 from types import SimpleNamespace
 
 import pytest
+from geopy import exc
 from geopy.geocoders import Nominatim
+from geopy.location import Location
 
 from fnme.core.geo import get_location
 from fnme.exceptions import LocationError
 
 
-def test_get_location_valid_address():
-    address = "London, UK"
-    lat, lon = get_location(address)
-    assert isinstance(lat, float)
-    assert isinstance(lon, float)
+def test_get_location_valid_address(monkeypatch):
+    def ok(self, addr, *args, **kwargs):
+        return Location(
+            "London, UK", (51.5, -0.1), {"display_name": "London, UK"}
+        )
+
+    monkeypatch.setattr(Nominatim, "geocode", ok)
+    lat, lon = get_location("London, UK")
+    assert lat == 51.5
+    assert lon == -0.1
 
 
 def test_get_location_invalid_address():
