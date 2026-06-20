@@ -6,6 +6,10 @@ from fnme.exceptions import LocationError
 
 
 def get_location(address: str) -> tuple[float, float]:
+
+    if not isinstance(address, str) or not address.strip():
+        raise LocationError(message=f"Invalid address: '{address}'")
+
     geolocator = Nominatim(user_agent="FuelNearMe")
 
     try:
