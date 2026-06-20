@@ -1,3 +1,5 @@
+import os
+import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -6,6 +8,25 @@ from platformdirs import user_cache_path
 
 from fnme.constants import ENDPOINT, HEADERS
 from fnme.exceptions import DataFetchError, InvalidDataError
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    tmp_path: Path | None = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            delete=False,
+        ) as tmp_file:
+            tmp_file.write(text)
+            tmp_path = Path(tmp_file.name)
+        os.replace(tmp_path, path)
+    except Exception:
+        if tmp_path is not None and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def get_latest_data() -> tuple[pd.DataFrame, str | None]:
@@ -51,11 +72,11 @@ def get_latest_data() -> tuple[pd.DataFrame, str | None]:
     last_modified = response.headers.get("Last-Modified")
 
     try:
-        csv_path.write_text(response.text, encoding="utf-8")
+        _atomic_write_text(csv_path, response.text)
     except Exception as e:
         raise DataFetchError(message=f"Error writing CSV cache: {e}")
     try:
-        timestamp_path.write_text(last_modified or "")
+        _atomic_write_text(timestamp_path, last_modified or "")
     except Exception as e:
         raise DataFetchError(message=f"Error writing timestamp file: {e}")
 
