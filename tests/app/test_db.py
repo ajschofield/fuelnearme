@@ -1,0 +1,71 @@
+import sqlalchemy as sql
+
+from app.db import get_latest_prices, get_nearby_stations
+
+LEEDS_LAT, LEEDS_LON = 53.7997, -1.5492
+MANCHESTER_LAT, MANCHESTER_LON = 53.4808, -2.2426
+
+
+def _insert_price(conn, node_id, trading_name, fuel_type, price_pence,
+                  lat, lon, postcode, loaded_at="2026-06-01 00:00:00+00"):
+    conn.execute(sql.text("""
+        INSERT INTO marts.fct_fuel_prices
+            (node_id, trading_name, fuel_type, price_pence,
+             latitude, longitude, postcode, city, loaded_at,
+             is_motorway_service_station, is_supermarket_service_station)
+        VALUES
+            (:node_id, :trading_name, :fuel_type, :price_pence,
+             :lat, :lon, :postcode, 'Leeds', :loaded_at, false, false)
+    """), dict(node_id=node_id, trading_name=trading_name, fuel_type=fuel_type,
+               price_pence=price_pence, lat=lat, lon=lon,
+               postcode=postcode, loaded_at=loaded_at))
+
+
+def test_get_latest_prices_returns_rows(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Test Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        conn.commit()
+    result = get_latest_prices(app_engine, fuel_type="E10")
+    assert len(result) == 1
+    assert result[0]["node_id"] == "abc123"
+
+
+def test_get_latest_prices_returns_only_most_recent(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Test Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA",
+                      loaded_at="2026-06-01 00:00:00+00")
+        _insert_price(conn, "abc123", "Test Station", "E10", 129.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA",
+                      loaded_at="2026-06-10 00:00:00+00")
+        conn.commit()
+    result = get_latest_prices(app_engine, fuel_type="E10")
+    assert len(result) == 1
+    assert float(result[0]["price_pence"]) == 129.9
+
+
+def test_get_nearby_stations_returns_stations_within_radius(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Leeds Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        _insert_price(conn, "def456", "Manchester Station", "E10", 131.9,
+                      MANCHESTER_LAT, MANCHESTER_LON, "M1 1AA")
+        conn.commit()
+    result = get_nearby_stations(app_engine, LEEDS_LAT, LEEDS_LON, radius_miles=10)
+    node_ids = {r["node_id"] for r in result}
+    assert "abc123" in node_ids
+    assert "def456" not in node_ids
+
+
+def test_get_nearby_stations_returns_all_fuel_types(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Leeds Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        _insert_price(conn, "abc123", "Leeds Station", "E5", 145.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        conn.commit()
+    result = get_nearby_stations(app_engine, LEEDS_LAT, LEEDS_LON, radius_miles=10)
+    fuel_types = {r["fuel_type"] for r in result}
+    assert "E10" in fuel_types
+    assert "E5" in fuel_types
