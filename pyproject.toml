@@ -12,6 +12,7 @@ dependencies = [
     "tabulate>=0.10.0",
     "platformdirs>=4.9.6",
     "sqlalchemy>=2.0.51",
+    "psycopg2-binary>=2.9.12",
 ]
 
 [project.scripts]
@@ -42,4 +43,5 @@ dev = [
     "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.12",
+    "testcontainers[postgres]>=4.14.2",
 ]

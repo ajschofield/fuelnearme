@@ -1,35 +1,58 @@
-from load.schema import create_tables
-from load.query import run_query
-from sqlalchemy import create_engine
+import sqlalchemy as sql
+
+from load.schema import create_raw_schema
 
 
-def test_stations_table_schema_is_correct():
-
-    # Create a test database connection (using in-memory SQLite for testing)
-    db = create_engine("sqlite:///:memory:", echo=False)
-
-    create_tables(db)
-
-    # Run a query to get the table schema for the "stations" table
-    # NOTE: This is sqlite specific; does not work for other DBs like postgres
-    schema_query = "PRAGMA table_info(stations);"
-    schema_result = run_query(db, schema_query)
-
-    assert len(schema_result) == 5
-    assert schema_result[0][1] == "node_id"
+def _table_columns(engine, schema, table) -> set[str]:
+    with engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = :schema AND table_name = :table"
+        ), {"schema": schema, "table": table})
+        return {row[0] for row in result}
 
 
-def test_fuel_prices_table_schema_is_correct():
+def test_raw_schema_exists(pg_engine):
+    create_raw_schema(pg_engine)
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT 1 FROM information_schema.schemata WHERE schema_name = 'raw'"
+        ))
+        assert result.fetchone() is not None
 
-    # Create a test database connection (using in-memory SQLite for testing)
-    db = create_engine("sqlite:///:memory:", echo=False)
 
-    create_tables(db)
+def test_stations_table_exists(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "stations")
+    assert cols, "raw.stations table not found"
 
-    # Run a query to get the table schema for the "fuel_prices" table
-    # NOTE: This is sqlite specific; does not work for other DBs like postgres
-    schema_query = "PRAGMA table_info(fuel_prices);"
-    schema_result = run_query(db, schema_query)
 
-    assert len(schema_result) == 5
-    assert schema_result[0][1] == "node_id"
+def test_stations_table_has_required_columns(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "stations")
+    assert {"node_id", "trading_name", "brand_name", "location",
+            "amenities", "opening_times", "fuel_types", "loaded_at"}.issubset(cols)
+
+
+def test_fuel_prices_table_exists(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "fuel_prices")
+    assert cols, "raw.fuel_prices table not found"
+
+
+def test_fuel_prices_table_has_required_columns(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "fuel_prices")
+    assert {"node_id", "trading_name", "fuel_prices", "loaded_at"}.issubset(cols)
+
+
+def test_pipeline_runs_table_exists(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "pipeline_runs")
+    assert cols, "raw.pipeline_runs table not found"
+
+
+def test_pipeline_runs_table_has_required_columns(pg_engine):
+    create_raw_schema(pg_engine)
+    cols = _table_columns(pg_engine, "raw", "pipeline_runs")
+    assert {"id", "run_started_at", "run_completed_at", "is_incremental"}.issubset(cols)
