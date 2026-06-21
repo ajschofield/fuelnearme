@@ -1,4 +1,4 @@
-FROM apache/airflow:2.9.3
+FROM apache/airflow:2.10.4
 USER airflow
 COPY extract/requirements.txt /tmp/extract-req.txt
 COPY load/requirements.txt /tmp/load-req.txt
