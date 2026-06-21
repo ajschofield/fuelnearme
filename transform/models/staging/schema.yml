@@ -1,0 +1,155 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: stations
+      - name: fuel_prices
+
+models:
+  - name: stg_fuel_prices
+    columns:
+      - name: node_id
+        tests:
+          - not_null
+      - name: fuel_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["E5", "E10", "B7_STANDARD", "B7_PREMIUM", "B10", "HVO"]
+      - name: price_pence
+        tests:
+          - not_null
+
+  - name: stg_stations
+    columns:
+      - name: node_id
+        tests:
+          - not_null
+          - unique
+      - name: trading_name
+        tests:
+          - not_null
+      - name: latitude
+        tests:
+          - not_null
+      - name: longitude
+        tests:
+          - not_null
+
+unit_tests:
+  - name: test_empty_phone_number_normalised_to_null
+    model: stg_stations
+    given:
+      - input: source('raw', 'stations')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: ""
+            trading_name: "Test Station"
+            is_same_trading_and_brand_name: true
+            brand_name: "Test Brand"
+            temporary_closure: false
+            permanent_closure: false
+            permanent_closure_date: null
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            location: '{"address_line_1": "1 Test St", "address_line_2": null, "city": "Leeds", "county": "West Yorkshire", "country": "England", "postcode": "LS1 1AA", "latitude": 53.7997, "longitude": -1.5492}'
+            amenities: '["car_wash"]'
+            opening_times: '{}'
+            fuel_types: '["E5", "E10"]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          public_phone_number: null
+
+  - name: test_null_temporary_closure_defaults_to_false
+    model: stg_stations
+    given:
+      - input: source('raw', 'stations')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            is_same_trading_and_brand_name: true
+            brand_name: "Test Brand"
+            temporary_closure: null
+            permanent_closure: null
+            permanent_closure_date: null
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            location: '{"address_line_1": "1 Test St", "address_line_2": null, "city": "Leeds", "county": "West Yorkshire", "country": "England", "postcode": "LS1 1AA", "latitude": 53.7997, "longitude": -1.5492}'
+            amenities: '[]'
+            opening_times: '{}'
+            fuel_types: '["E5"]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          temporary_closure: false
+          permanent_closure: false
+
+  - name: test_location_jsonb_flattened_to_columns
+    model: stg_stations
+    given:
+      - input: source('raw', 'stations')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            is_same_trading_and_brand_name: true
+            brand_name: "Test Brand"
+            temporary_closure: false
+            permanent_closure: false
+            permanent_closure_date: null
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            location: '{"address_line_1": "1 Test St", "address_line_2": null, "city": "Leeds", "county": "West Yorkshire", "country": "England", "postcode": "LS1 1AA", "latitude": 53.7997, "longitude": -1.5492}'
+            amenities: '[]'
+            opening_times: '{}'
+            fuel_types: '["E5"]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          postcode: "LS1 1AA"
+          city: "Leeds"
+          latitude: 53.7997
+          longitude: -1.5492
+
+  - name: test_fuel_prices_array_unnested_to_rows
+    model: stg_fuel_prices
+    given:
+      - input: source('raw', 'fuel_prices')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            fuel_prices: '[{"fuel_type": "E5", "price": 159.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}, {"fuel_type": "E10", "price": 132.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "E5"
+          price_pence: 159.9
+        - node_id: "abc123"
+          fuel_type: "E10"
+          price_pence: 132.9
+
+  - name: test_single_fuel_type_produces_one_row
+    model: stg_fuel_prices
+    given:
+      - input: source('raw', 'fuel_prices')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            fuel_prices: '[{"fuel_type": "B7_STANDARD", "price": 141.9, "price_last_updated": "2026-02-17T16:03:04.938Z", "price_change_effective_timestamp": "2026-02-17T16:00:00.000Z"}]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "B7_STANDARD"
+          price_pence: 141.9
