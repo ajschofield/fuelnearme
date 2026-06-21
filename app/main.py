@@ -8,6 +8,7 @@ from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.geocoders import Nominatim
 
 from app.db import get_latest_prices, get_nearby_stations
+from app.metrics import brand_averages, summary_stats
 
 st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
 
@@ -19,6 +20,18 @@ _FUEL_LABELS = {
     "B10": "B10 (Biodiesel)",
     "HVO": "HVO",
 }
+
+# Green (cheap) -> red (expensive), used for both the heatmap and the points.
+_HEATMAP_COLORS = [
+    [26, 152, 80],
+    [145, 207, 96],
+    [217, 239, 139],
+    [254, 224, 139],
+    [252, 141, 89],
+    [215, 48, 39],
+]
+
+_MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
 
 @st.cache_resource
@@ -46,7 +59,27 @@ def price_colour(price: float, mean: float, std: float) -> list[int]:
     return [r, g, 0, 220]
 
 
-def render_map(prices: list[dict]) -> None:
+def render_metrics(stats: dict) -> None:
+    cheapest = stats["cheapest"]
+    cheapest_where = " · ".join(
+        part for part in (cheapest.get("trading_name"), cheapest.get("city")) if part
+    )
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("National average", f"{stats['mean_pence']:.1f}p")
+    c2.metric(
+        "Cheapest",
+        f"{float(cheapest['price_pence']):.1f}p",
+        help=cheapest_where or None,
+    )
+    c3.metric("Stations", f"{stats['count']:,}")
+    c4.metric(
+        "Spread",
+        f"{stats['spread_pence']:.1f}p",
+        help=f"{stats['min_pence']:.1f}p to {stats['max_pence']:.1f}p across stations",
+    )
+
+
+def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     if not prices:
         st.info("No price data available for this fuel type.")
         return
@@ -55,31 +88,76 @@ def render_map(prices: list[dict]) -> None:
     df["price_pence"] = df["price_pence"].astype(float)
     mean = df["price_pence"].mean()
     std = df["price_pence"].std()
-    df["color"] = df["price_pence"].apply(lambda p: price_colour(float(p), mean, std))
-    df["price_label"] = df["price_pence"].apply(lambda p: f"{float(p)/100:.3f}p/L")
+    if pd.isna(std) or std == 0:
+        std = 1.0
 
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df,
-        get_position=["longitude", "latitude"],
-        get_fill_color="color",
-        get_radius=500,
-        pickable=True,
+    view = pdk.ViewState(latitude=54.2, longitude=-2.4, zoom=5.1)
+
+    if view_mode == "Points":
+        df["color"] = df["price_pence"].apply(lambda p: price_colour(p, mean, std))
+        df["price_label"] = df["price_pence"].apply(lambda p: f"{p:.1f}p")
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=df,
+            get_position=["longitude", "latitude"],
+            get_fill_color="color",
+            get_radius=600,
+            pickable=True,
+        )
+        deck = pdk.Deck(
+            layers=[layer],
+            initial_view_state=view,
+            tooltip={"text": "{trading_name}\n{price_label}"},
+            map_style=_MAP_STYLE,
+        )
+    else:
+        layer = pdk.Layer(
+            "HeatmapLayer",
+            data=df,
+            get_position=["longitude", "latitude"],
+            get_weight="price_pence",
+            aggregation=pdk.types.String("MEAN"),
+            color_range=_HEATMAP_COLORS,
+            color_domain=[mean - 1.5 * std, mean + 1.5 * std],
+            radius_pixels=45,
+            opacity=0.75,
+        )
+        deck = pdk.Deck(
+            layers=[layer],
+            initial_view_state=view,
+            map_style=_MAP_STYLE,
+        )
+
+    st.pydeck_chart(deck)
+    st.caption(
+        f"Cheaper → green · pricier → red · national average "
+        f"{mean:.1f}p · {len(df):,} stations"
     )
 
-    view = pdk.ViewState(latitude=52.8, longitude=-1.8, zoom=6)
-    tooltip = {"text": "{trading_name}\n{price_label}"}
 
-    st.pydeck_chart(pdk.Deck(
-        layers=[layer],
-        initial_view_state=view,
-        tooltip=tooltip,
-        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-    ))
-    avg_label = f"{mean / 100:.3f}p/L"
-    st.caption(
-        f"Green = below average · Red = above average · "
-        f"average {avg_label} · {len(df)} stations shown"
+def render_brands(prices: list[dict]) -> None:
+    rows = brand_averages(prices)
+    if len(rows) < 2:
+        return
+
+    df = pd.DataFrame(rows).rename(
+        columns={"brand": "Brand", "avg_pence": "Avg price", "stations": "Stations"}
+    )
+    lo, hi = df["Avg price"].min(), df["Avg price"].max()
+
+    st.subheader("Average price by brand")
+    st.dataframe(
+        df,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Avg price": st.column_config.ProgressColumn(
+                "Avg price",
+                format="%.1fp",
+                min_value=float(lo) - 0.5,
+                max_value=float(hi),
+            ),
+        },
     )
 
 
@@ -156,7 +234,22 @@ def main() -> None:
         st.warning("Price data not yet available — the pipeline may still be loading.")
         prices = []
 
-    render_map(prices)
+    stats = summary_stats(prices)
+    if stats:
+        render_metrics(stats)
+
+    view_mode = (
+        st.segmented_control(
+            "Map view",
+            options=["Heatmap", "Points"],
+            default="Heatmap",
+            label_visibility="collapsed",
+        )
+        or "Heatmap"
+    )
+    render_map(prices, view_mode)
+
+    render_brands(prices)
     st.divider()
     render_search(engine, fuel_type)
 
