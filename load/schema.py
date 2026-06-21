@@ -35,6 +35,13 @@ def create_raw_schema(engine) -> None:
             )
         """))
 
+        # Supports the incremental loaded_at watermark filter in fct_fuel_prices,
+        # so each run prunes to new rows instead of scanning all price history.
+        conn.execute(sql.text("""
+            CREATE INDEX IF NOT EXISTS idx_fuel_prices_loaded_at
+            ON raw.fuel_prices (loaded_at)
+        """))
+
         conn.execute(sql.text("""
             CREATE TABLE IF NOT EXISTS raw.pipeline_runs (
                 id               SERIAL PRIMARY KEY,

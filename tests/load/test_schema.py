@@ -46,6 +46,17 @@ def test_fuel_prices_table_has_required_columns(pg_engine):
     assert {"node_id", "trading_name", "fuel_prices", "loaded_at"}.issubset(cols)
 
 
+def test_fuel_prices_has_loaded_at_index(pg_engine):
+    create_raw_schema(pg_engine)
+    with pg_engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT 1 FROM pg_indexes "
+            "WHERE schemaname = 'raw' AND tablename = 'fuel_prices' "
+            "AND indexname = 'idx_fuel_prices_loaded_at'"
+        ))
+        assert result.fetchone() is not None
+
+
 def test_pipeline_runs_table_exists(pg_engine):
     create_raw_schema(pg_engine)
     cols = _table_columns(pg_engine, "raw", "pipeline_runs")
