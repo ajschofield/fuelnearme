@@ -1,0 +1,22 @@
+# Streamlit theme for FuelNearMe. Picked up automatically when `streamlit run`
+# is invoked from the repo root (local dev) and from /app in the Docker image.
+
+[client]
+# Hide the "Deploy" button and developer menu items for a cleaner app.
+toolbarMode = "minimal"
+
+[theme]
+base = "dark"
+primaryColor = "#e63946"             # fuel-red accent (matches the logo + slider)
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#171b24"  # widgets / cards lift slightly off the page
+textColor = "#e6e8eb"
+linkColor = "#f1808a"
+borderColor = "#2b313c"
+showWidgetBorder = true               # give inputs definition instead of floating
+baseRadius = "0.65rem"
+buttonRadius = "0.5rem"
+
+[theme.sidebar]
+backgroundColor = "#12161e"           # distinct shade so the sidebar reads as a panel
+borderColor = "#2b313c"

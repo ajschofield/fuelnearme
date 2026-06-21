@@ -9,7 +9,7 @@ from geopy.geocoders import Nominatim
 
 from app.db import get_latest_prices, get_nearby_stations
 
-st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
+st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
 
 _FUEL_LABELS = {
     "E10": "E10 (Petrol)",
@@ -134,16 +134,20 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
 
 def main() -> None:
     st.title("⛽ FuelNearMe")
-
-    with st.sidebar:
-        st.header("Map options")
-        fuel_type = st.selectbox(
-            "Fuel type for map",
-            options=list(_FUEL_LABELS.keys()),
-            format_func=lambda k: _FUEL_LABELS[k],
-        )
+    st.caption("Live UK fuel prices — find the cheapest forecourt near you.")
 
     engine = get_engine()
+
+    fuel_type = (
+        st.segmented_control(
+            "Fuel type",
+            options=list(_FUEL_LABELS.keys()),
+            format_func=lambda k: _FUEL_LABELS[k],
+            default="E10",
+            label_visibility="collapsed",
+        )
+        or "E10"
+    )
 
     try:
         with st.spinner("Loading prices..."):
