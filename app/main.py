@@ -37,9 +37,13 @@ def geocode(address: str) -> tuple[float, float] | None:
     return None
 
 
-def price_colour(price: float, lo: float, hi: float) -> list[int]:
-    ratio = (price - lo) / (hi - lo) if hi > lo else 0.5
-    return [int(255 * ratio), int(255 * (1 - ratio)), 0, 200]
+def price_colour(price: float, mean: float, std: float) -> list[int]:
+    # Clamp to ±2 standard deviations from the mean; centre = yellow
+    deviation = (price - mean) / (std if std > 0 else 1.0)
+    ratio = max(0.0, min(1.0, (deviation + 2.0) / 4.0))
+    r = int(255 * ratio)
+    g = int(255 * (1.0 - ratio))
+    return [r, g, 0, 220]
 
 
 def render_map(prices: list[dict], fuel_label: str) -> None:
@@ -48,8 +52,10 @@ def render_map(prices: list[dict], fuel_label: str) -> None:
         return
 
     df = pd.DataFrame(prices)
-    lo, hi = float(df["price_pence"].min()), float(df["price_pence"].max())
-    df["color"] = df["price_pence"].apply(lambda p: price_colour(float(p), lo, hi))
+    df["price_pence"] = df["price_pence"].astype(float)
+    mean = df["price_pence"].mean()
+    std = df["price_pence"].std()
+    df["color"] = df["price_pence"].apply(lambda p: price_colour(float(p), mean, std))
     df["price_label"] = df["price_pence"].apply(lambda p: f"{float(p)/100:.3f}p/L")
 
     layer = pdk.Layer(
@@ -57,7 +63,7 @@ def render_map(prices: list[dict], fuel_label: str) -> None:
         data=df,
         get_position=["longitude", "latitude"],
         get_fill_color="color",
-        get_radius=300,
+        get_radius=500,
         pickable=True,
     )
 
@@ -68,9 +74,10 @@ def render_map(prices: list[dict], fuel_label: str) -> None:
         layers=[layer],
         initial_view_state=view,
         tooltip=tooltip,
-        map_style="mapbox://styles/mapbox/light-v10",
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     ))
-    st.caption(f"Green = cheapest · Red = most expensive · {len(df)} stations shown")
+    avg_label = f"{mean / 100:.3f}p/L"
+    st.caption(f"Green = below average · Red = above average · average {avg_label} · {len(df)} stations shown")
 
 
 def render_search(engine: sql.Engine, fuel_type: str) -> None:
@@ -99,7 +106,8 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
         return
 
     df = pd.DataFrame(rows)
-    df["price_£"] = (df["price_pence"].astype(float) / 100).round(3)
+    df["price_pence"] = df["price_pence"].astype(float)
+    df["price_£"] = (df["price_pence"] / 100).round(3)
     df = df.sort_values(["fuel_type", "price_pence"])
 
     for fuel in sorted(df["fuel_type"].unique()):
