@@ -3,7 +3,7 @@ name = "fnme"
 version = "0.1.0"
 description = "Find cheap(er) fuel near you using the official Fuel Finder service provided by the UK government"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "geopy>=2.4.1",
     "pandas>=3.0.2",
@@ -26,7 +26,7 @@ include = ["fnme"]
 
 [tool.ruff]
 line-length = 79
-target-version = "py314"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
