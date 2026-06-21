@@ -41,13 +41,13 @@ def _load(**context) -> None:
 
 with DAG(
     dag_id="fuelnearme_pipeline",
-    description="Hourly extract, load and transform of UK fuel price data",
+    description="30-minute extract, load and transform of UK fuel price data",
     default_args={
         "retries": 1,
         "retry_delay": timedelta(minutes=5),
         "email_on_failure": False,
     },
-    schedule="@hourly",
+    schedule="*/30 * * * *",
     start_date=datetime(2026, 6, 21),
     catchup=False,
     tags=["fuelnearme"],

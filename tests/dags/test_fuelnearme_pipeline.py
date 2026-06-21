@@ -28,9 +28,9 @@ def test_dag_has_correct_tasks():
     assert {t.task_id for t in dag.tasks} == {"extract", "load", "transform"}
 
 
-def test_dag_is_hourly():
+def test_dag_runs_every_30_minutes():
     dag = _dagbag().dags["fuelnearme_pipeline"]
-    assert dag.schedule_interval == "@hourly"
+    assert dag.schedule_interval == "*/30 * * * *"
 
 
 def test_task_dependencies_are_sequential():
