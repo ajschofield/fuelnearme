@@ -2,7 +2,10 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("airflow.models", reason="apache-airflow not installed — skipping DAG tests")
+pytest.importorskip(
+    "airflow.models",
+    reason="apache-airflow not installed — skipping DAG tests",
+)
 
 DAGS_DIR = Path(__file__).parents[2] / "dags"
 

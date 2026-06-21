@@ -15,8 +15,12 @@ def main(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     access_token = generate_access_token(client_id, client_secret)
-    stations = fetch_all_stations(access_token, effective_start_timestamp=effective_start_timestamp)
-    prices = fetch_all_prices(access_token, effective_start_timestamp=effective_start_timestamp)
+    stations = fetch_all_stations(
+        access_token, effective_start_timestamp=effective_start_timestamp
+    )
+    prices = fetch_all_prices(
+        access_token, effective_start_timestamp=effective_start_timestamp
+    )
 
     (output_dir / "stations.json").write_text(json.dumps(stations))
     (output_dir / "prices.json").write_text(json.dumps(prices))

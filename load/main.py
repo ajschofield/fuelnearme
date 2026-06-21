@@ -6,7 +6,12 @@ from pathlib import Path
 
 import sqlalchemy as sql
 
-from load.ingest import complete_pipeline_run, ingest_prices, ingest_stations, start_pipeline_run
+from load.ingest import (
+    complete_pipeline_run,
+    ingest_prices,
+    ingest_stations,
+    start_pipeline_run,
+)
 from load.schema import create_raw_schema
 
 

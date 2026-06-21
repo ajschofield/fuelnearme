@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 from extract.main import main
@@ -34,7 +33,9 @@ def test_main_writes_prices_json(mock_stations, mock_prices, mock_token, tmp_pat
 @patch("extract.main.generate_access_token", return_value=TOKEN)
 @patch("extract.main.fetch_all_prices")
 @patch("extract.main.fetch_all_stations")
-def test_main_generates_token_with_credentials(mock_stations, mock_prices, mock_token, tmp_path):
+def test_main_generates_token_with_credentials(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
     mock_stations.return_value = STATIONS
     mock_prices.return_value = PRICES
     main(output_dir=tmp_path, client_id="my_id", client_secret="my_secret")
@@ -44,19 +45,31 @@ def test_main_generates_token_with_credentials(mock_stations, mock_prices, mock_
 @patch("extract.main.generate_access_token", return_value=TOKEN)
 @patch("extract.main.fetch_all_prices")
 @patch("extract.main.fetch_all_stations")
-def test_main_passes_token_and_timestamp_to_fetchers(mock_stations, mock_prices, mock_token, tmp_path):
+def test_main_passes_token_and_timestamp_to_fetchers(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
     mock_stations.return_value = STATIONS
     mock_prices.return_value = PRICES
-    main(output_dir=tmp_path, effective_start_timestamp="2026-06-01 00:00:00",
-         client_id="id", client_secret="secret")
-    mock_stations.assert_called_once_with(TOKEN, effective_start_timestamp="2026-06-01 00:00:00")
-    mock_prices.assert_called_once_with(TOKEN, effective_start_timestamp="2026-06-01 00:00:00")
+    main(
+        output_dir=tmp_path,
+        effective_start_timestamp="2026-06-01 00:00:00",
+        client_id="id",
+        client_secret="secret",
+    )
+    mock_stations.assert_called_once_with(
+        TOKEN, effective_start_timestamp="2026-06-01 00:00:00"
+    )
+    mock_prices.assert_called_once_with(
+        TOKEN, effective_start_timestamp="2026-06-01 00:00:00"
+    )
 
 
 @patch("extract.main.generate_access_token", return_value=TOKEN)
 @patch("extract.main.fetch_all_prices")
 @patch("extract.main.fetch_all_stations")
-def test_main_passes_no_timestamp_when_none(mock_stations, mock_prices, mock_token, tmp_path):
+def test_main_passes_no_timestamp_when_none(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
     mock_stations.return_value = STATIONS
     mock_prices.return_value = PRICES
     main(output_dir=tmp_path, client_id="id", client_secret="secret")

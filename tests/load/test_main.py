@@ -1,4 +1,5 @@
 import json
+
 import sqlalchemy as sql
 
 from load.main import main

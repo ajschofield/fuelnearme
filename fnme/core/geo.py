@@ -7,7 +7,6 @@ from geopy.location import Location
 
 from fnme.exceptions import LocationError
 
-
 _geolocator = Nominatim(
     user_agent="FuelNearMe (https://github.com/ajschofield/FuelNearMe)"
 )

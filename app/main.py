@@ -46,7 +46,7 @@ def price_colour(price: float, mean: float, std: float) -> list[int]:
     return [r, g, 0, 220]
 
 
-def render_map(prices: list[dict], fuel_label: str) -> None:
+def render_map(prices: list[dict]) -> None:
     if not prices:
         st.info("No price data available for this fuel type.")
         return
@@ -77,14 +77,20 @@ def render_map(prices: list[dict], fuel_label: str) -> None:
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     ))
     avg_label = f"{mean / 100:.3f}p/L"
-    st.caption(f"Green = below average · Red = above average · average {avg_label} · {len(df)} stations shown")
+    st.caption(
+        f"Green = below average · Red = above average · "
+        f"average {avg_label} · {len(df)} stations shown"
+    )
 
 
 def render_search(engine: sql.Engine, fuel_type: str) -> None:
     st.subheader("Find stations near you")
     col1, col2 = st.columns([3, 1])
     with col1:
-        address = st.text_input("Postcode or address", placeholder="e.g. LS11 or Leeds city centre")
+        address = st.text_input(
+            "Postcode or address",
+            placeholder="e.g. LS11 or Leeds city centre",
+        )
     with col2:
         radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
 
@@ -146,7 +152,7 @@ def main() -> None:
         st.warning("Price data not yet available — the pipeline may still be loading.")
         prices = []
 
-    render_map(prices, _FUEL_LABELS[fuel_type])
+    render_map(prices)
     st.divider()
     render_search(engine, fuel_type)
 

@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import sqlalchemy as sql
-from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+
+from airflow import DAG
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 _DATA_DIR = Path("/tmp/fuelnearme_pipeline")
