@@ -1,3 +1,5 @@
+{{ config(materialized='incremental') }}
+
 select
     node_id,
     trading_name,
@@ -16,3 +18,9 @@ select
     latitude,
     longitude
 from {{ ref('int_prices_with_station') }}
+
+{% if is_incremental() %}
+where loaded_at > (
+    select coalesce(max(loaded_at), '1970-01-01'::timestamptz) from {{ this }}
+)
+{% endif %}

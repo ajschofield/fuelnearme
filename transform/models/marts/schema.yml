@@ -69,6 +69,9 @@ unit_tests:
 
   - name: test_fct_fuel_prices_contains_location_fields
     model: fct_fuel_prices
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('int_prices_with_station')
         rows:
@@ -102,6 +105,9 @@ unit_tests:
 
   - name: test_fct_fuel_prices_multiple_loads_produce_multiple_rows
     model: fct_fuel_prices
+    overrides:
+      macros:
+        is_incremental: false
     given:
       - input: ref('int_prices_with_station')
         rows:
