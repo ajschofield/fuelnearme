@@ -39,7 +39,12 @@ def main() -> None:
 
     data_dir = Path(os.getenv("DATA_DIR", "/tmp/pipeline_data"))
 
-    run_extract(output_dir=data_dir, effective_start_timestamp=timestamp)
+    run_extract(
+        output_dir=data_dir,
+        effective_start_timestamp=timestamp,
+        client_id=os.environ["CLIENT_ID"],
+        client_secret=os.environ["CLIENT_SECRET"],
+    )
     run_load(engine=engine, input_dir=data_dir, is_incremental=is_incremental)
     run_dbt()
 
