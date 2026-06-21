@@ -7,7 +7,7 @@ def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
     with engine.connect() as conn:
         result = conn.execute(sql.text("""
             SELECT DISTINCT ON (node_id)
-                node_id, trading_name, fuel_type, price_pence,
+                node_id, trading_name, brand_name, fuel_type, price_pence,
                 latitude, longitude, postcode, city
             FROM marts.fct_fuel_prices
             WHERE fuel_type = :fuel_type
