@@ -1,66 +1,109 @@
 # FuelNearMe
+**A full UK fuel price ELT pipeline that visualises data from the Fuel Finder public API, scheduled every 30 minutes via Airflow**
 
-FuelNearMe is a simple Python utility that retrieves data from the UK Government’s
-solution to centralising fuel station prices across the country. You can read more
-about it [here](https://www.fuel-finder.service.gov.uk/).
+FuelNearMe is a full ELT pipeline that continuously ingests UK petrol station and fuel price data from the [Fuel Finder API](https://www.developer.fuel-finder.service.gov.uk/public-api), loads it into PostgreSQL, transforms it with dbt, and serves it through a Streamlit interface. The project originally began as a CLI tool, which is still available for use - the only
+difference is that it uses the CSV data available as an alternative for the service.
 
-It lacks useful features like crowdsourcing data, but it aims to be a quick and simple
-way to find the cheapest fuel near you.
+As per the documentation, price updates submitted by fuel stations are reflected
+on the platform within 30 minutes - the Airflow scheduler also follows this
+timeframe.
 
-## Installation
+---
 
-This project uses `uv` for dependency management and environment handling. In the
-project's current state, follow the steps below to install (will improve further
-in development!)
-
-### Clone
+## Architecture
 
 ```
-git clone https://github.com/ajschofield/FuelNearMe.git
-cd FuelNearMe
+┌─────────────────────────────────────────────────────┐
+│                Apache Airflow (*/30 * * * *)        │
+│                                                     │
+│   ┌─────────┐     ┌──────┐     ┌───────────────┐    │
+│   │ extract │────▶│ load │────▶│ transform     │    │
+│   │ Python  │     │Python│     │ (dbt build)   │    │
+│   └─────────┘     └──────┘     └───────────────┘    │
+└─────────────────────────────────────────────────────┘
+        │                 │               │
+        ▼                 ▼               ▼
+   /tmp (JSON)       raw schema      staging / marts
+                    raw.stations     dim_stations
+                  raw.fuel_prices    fct_fuel_prices
+                 raw.pipeline_runs
+
+                                         │
+                                         ▼
+                               ┌──────────────────┐
+                               │  Streamlit App   │
+                               │  :8501           │
+                               └──────────────────┘
 ```
 
-### Sync
+**Extract** — authenticates with the Fuel Finder API via OAuth 2.0, fetches stations and prices in paginated batches, writes JSON to a shared temp directory.
+
+**Load** — upserts station metadata and appends fuel price records into the `raw` PostgreSQL schema. Supports incremental runs: on the first run all data is fetched; on subsequent runs only records changed since the last completed run are fetched, using `raw.pipeline_runs` as the watermark.
+
+**Transform** — dbt materialises staging views, an intermediate join layer, and mart tables (`dim_stations`, `fct_fuel_prices`) queried by the app.
+
+**App** — Streamlit dashboard with a UK-wide price heatmap (mean-centred diverging colour scale) and a postcode/address search returning nearby stations sorted by price.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Orchestration | Apache Airflow 2.10 (LocalExecutor) |
+| Extract / Load | Python 3.12 |
+| Transform | dbt-postgres 1.10 |
+| Database | PostgreSQL 16 |
+| App | Streamlit + pydeck |
+| Infrastructure | Docker Compose |
+
+---
+
+## Prerequisites
+
+- Docker Engine
+- API credentials from the [developer portal](https://www.developer.fuel-finder.service.gov.uk)
+  - Requires a GOV.UK One Login
+
+---
+
+## Quick Start
+
+**1. Configure credentials**
+
+Create a `.env` file in the project root:
 
 ```
+CLIENT_ID=your_client_id
+CLIENT_SECRET=your_client_secret
+```
+
+**2. Build and start**
+
+```bash
+docker compose up --build
+```
+
+**3. Access**
+
+| Service | URL | Credentials |
+|---|---|---|
+| Airflow UI | http://localhost:8080 | admin / admin |
+| Streamlit app | http://localhost:8501 | — |
+
+The pipeline triggers automatically every 30 minutes. You can also trigger it manually from the Airflow UI.
+
+## CLI
+
+The original CLI tool runs independently from the ELT pipeline. There are no
+API credentials required to use this as it ingests the CSV copy available
+from the Fuel Finder website.
+
+```bash
 uv sync
+uv run fnme --address "London, UK" --radius 5 --sort distance
 ```
 
-### Install
+Sort options: `distance`, `e10`, `e5`, `b7s`
 
-```
-uv pip install -e .
-```
-
-## Usage
-
-[Geopy](https://github.com/geopy/geopy) is used to get the coordinates to search for
-fuel stations in the surrounding area in miles. It is also used to calculate the
-geodesic distance between the starting coordinates and the coordinates of a fuel
-station - this is an estimate and may not represent the actual distance.
-
-You can run the utility directly via `uv` - the tool handles everything for you.
-
-```
-uv run fnme [-h] -a ADDRESS [-r RADIUS] [-s {e10,e5,b7s,distance}]
-```
-
-It's relatively easy to use. For example, you can search for service stations
-around LS11 (Leeds), within a 5 mile radius, and to sort the results by distance.
-
-```
-uv run fnme --address "LS11" --radius 5 --sort "distance"
-```
-
-If you wish to run the command-line module directly without using the registered
-script, you can do so by running this from the root of the repository.
-
-```
-uv run python -m fnme.cli [-h] -a ADDRESS [-r RADIUS] [-s {e10,e5,b7s,distance}]
-```
-
-### Sort Options
-
-You can sort by: `distance`, `e10`, `e5`, `b7s`
-
-If this parameter isn't used, it automatically defaults to e10 (standard petrol).
+Full options: `uv run fnme --help`

@@ -17,7 +17,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ["E5", "E10", "B7_STANDARD", "B7_PREMIUM", "B10", "HVO"]
+              arguments:
+                values: ["E5", "E10", "B7_STANDARD", "B7_PREMIUM", "B10", "HVO"]
       - name: price_pence
         tests:
           - not_null
