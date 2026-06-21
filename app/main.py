@@ -115,7 +115,7 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
             "is_supermarket_service_station": "Supermarket",
         })
         st.markdown(f"**{_FUEL_LABELS.get(fuel, fuel)}**")
-        st.dataframe(fuel_df, use_container_width=True, hide_index=True)
+        st.dataframe(fuel_df, width="stretch", hide_index=True)
 
 
 def main() -> None:
@@ -131,8 +131,12 @@ def main() -> None:
 
     engine = get_engine()
 
-    with st.spinner("Loading prices..."):
-        prices = get_latest_prices(engine, fuel_type=fuel_type)
+    try:
+        with st.spinner("Loading prices..."):
+            prices = get_latest_prices(engine, fuel_type=fuel_type)
+    except Exception:
+        st.warning("Price data not yet available — the pipeline may still be loading.")
+        prices = []
 
     render_map(prices, _FUEL_LABELS[fuel_type])
     st.divider()

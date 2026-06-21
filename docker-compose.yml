@@ -38,6 +38,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      extract:
+        condition: service_completed_successfully
 
   transform:
     build:
@@ -52,6 +54,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      load:
+        condition: service_completed_successfully
 
   app:
     build:
