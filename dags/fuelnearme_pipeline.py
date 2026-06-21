@@ -66,9 +66,10 @@ with DAG(
     transform = BashOperator(
         task_id="transform",
         bash_command=(
-            "dbt build "
+            "/home/airflow/dbt-venv/bin/dbt build "
             "--profiles-dir /opt/airflow/transform "
-            "--project-dir /opt/airflow/transform"
+            "--project-dir /opt/airflow/transform "
+            "--log-path /tmp/dbt-logs"
         ),
     )
 
