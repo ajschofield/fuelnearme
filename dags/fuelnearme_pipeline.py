@@ -50,6 +50,7 @@ with DAG(
     schedule="*/30 * * * *",
     start_date=datetime(2026, 6, 21),
     catchup=False,
+    max_active_runs=1,
     tags=["fuelnearme"],
 ) as dag:
     extract = PythonOperator(
