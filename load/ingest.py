@@ -7,7 +7,7 @@ def ingest_stations(engine, stations: list[dict]) -> int:
     if not stations:
         return 0
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         for station in stations:
             conn.execute(sql.text("""
                 INSERT INTO raw.stations (
@@ -46,7 +46,6 @@ def ingest_stations(engine, stations: list[dict]) -> int:
                 "opening_times": json.dumps(station["opening_times"]),
                 "fuel_types": json.dumps(station["fuel_types"]),
             })
-        conn.commit()
 
     return len(stations)
 
@@ -55,7 +54,7 @@ def ingest_prices(engine, prices: list[dict]) -> int:
     if not prices:
         return 0
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         for price in prices:
             conn.execute(sql.text("""
                 INSERT INTO raw.fuel_prices (
@@ -68,31 +67,27 @@ def ingest_prices(engine, prices: list[dict]) -> int:
                 **price,
                 "fuel_prices": json.dumps(price["fuel_prices"]),
             })
-        conn.commit()
 
     return len(prices)
 
 
 def start_pipeline_run(engine, is_incremental: bool) -> int:
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         result = conn.execute(sql.text("""
             INSERT INTO raw.pipeline_runs (is_incremental)
             VALUES (:is_incremental)
             RETURNING id
         """), {"is_incremental": is_incremental})
-        run_id = result.fetchone()[0]
-        conn.commit()
-    return run_id
+        return result.fetchone()[0]
 
 
 def complete_pipeline_run(engine, run_id: int) -> None:
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(sql.text("""
             UPDATE raw.pipeline_runs
             SET run_completed_at = NOW()
             WHERE id = :id
         """), {"id": run_id})
-        conn.commit()
 
 
 def get_last_run_timestamp(engine) -> str | None:

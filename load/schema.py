@@ -2,7 +2,7 @@ import sqlalchemy as sql
 
 
 def create_raw_schema(engine) -> None:
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(sql.text("CREATE SCHEMA IF NOT EXISTS raw"))
 
         conn.execute(sql.text("""
@@ -44,4 +44,3 @@ def create_raw_schema(engine) -> None:
             )
         """))
 
-        conn.commit()
