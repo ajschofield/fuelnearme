@@ -235,7 +235,8 @@ def render_trend(rows: list[dict]) -> None:
         alt.Chart(df)
         .mark_line(color="#e63946", strokeWidth=2)
         .encode(
-            x=alt.X("day:T", title=None, axis=alt.Axis(format="%d %b")),
+            x=alt.X("day:T", title=None,
+                    axis=alt.Axis(format="%d %b", tickCount=len(df))),
             y=alt.Y(
                 "avg_pence:Q",
                 title="Price (p)",
