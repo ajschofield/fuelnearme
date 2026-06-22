@@ -77,6 +77,42 @@ def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
         return [row._asdict() for row in result]
 
 
+def get_fuel_deltas(engine) -> dict[str, float | None]:
+    """Day-over-day price change (pence) for each main fuel type.
+
+    Returns a dict keyed by fuel_type; value is today_avg - yesterday_avg,
+    or None when fewer than two days of data exist for that fuel.
+    """
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            WITH daily AS (
+                SELECT fuel_type,
+                       loaded_at::date AS day,
+                       AVG(price_pence) AS avg_pence
+                FROM marts.fct_fuel_prices
+                WHERE fuel_type = ANY(:fuels)
+                  AND price_pence BETWEEN 50 AND 400
+                GROUP BY fuel_type, loaded_at::date
+            ),
+            ranked AS (
+                SELECT fuel_type, day, avg_pence,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY fuel_type ORDER BY day DESC
+                       ) AS rn
+                FROM daily
+            )
+            SELECT
+                t.fuel_type,
+                t.avg_pence - y.avg_pence AS delta
+            FROM ranked t
+            JOIN ranked y
+              ON t.fuel_type = y.fuel_type
+             AND t.rn = 1 AND y.rn = 2
+        """), {"fuels": list(_MAIN_FUELS)})
+        rows = [row._asdict() for row in result]
+        return {r["fuel_type"]: float(r["delta"]) for r in rows}
+
+
 def get_price_trend(engine, fuel_type: str = "E10") -> list[dict]:
     """Daily national average price, oldest first. Empty when < 2 days exist."""
     with engine.connect() as conn:

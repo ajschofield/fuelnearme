@@ -12,6 +12,7 @@ from geopy.geocoders import Nominatim
 from app.db import (
     get_all_fuel_averages,
     get_best_days,
+    get_fuel_deltas,
     get_last_updated,
     get_latest_prices,
     get_nearby_stations,
@@ -93,15 +94,22 @@ _FUEL_OVERVIEW = [
 ]
 
 
-def render_fuel_overview(averages: dict) -> None:
+def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
     cols = st.columns(len(_FUEL_OVERVIEW))
     for col, (key, label) in zip(cols, _FUEL_OVERVIEW):
         data = averages.get(key)
-        if data:
-            col.metric(label, f"{float(data['avg_pence']):.1f}p",
-                       help=f"{data['stations']:,} stations")
-        else:
+        if not data:
             col.metric(label, "—")
+            continue
+        delta = deltas.get(key) if deltas else None
+        delta_str = f"{delta:+.1f}p" if delta is not None else None
+        col.metric(
+            label,
+            f"{float(data['avg_pence']):.1f}p",
+            delta=delta_str,
+            delta_color="inverse",
+            help=f"{data['stations']:,} stations",
+        )
 
 
 def render_metrics(stats: dict) -> None:
@@ -361,10 +369,12 @@ def main() -> None:
 
     try:
         fuel_overview = get_all_fuel_averages(engine)
+        fuel_deltas = get_fuel_deltas(engine)
     except Exception:
         fuel_overview = {}
+        fuel_deltas = {}
     if fuel_overview:
-        render_fuel_overview(fuel_overview)
+        render_fuel_overview(fuel_overview, fuel_deltas)
         st.divider()
 
     fuel_type = (
