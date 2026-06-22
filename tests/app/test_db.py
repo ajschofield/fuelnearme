@@ -1,6 +1,11 @@
 import sqlalchemy as sql
 
-from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations, get_region_rankings
+from app.db import (
+    get_all_fuel_averages,
+    get_latest_prices,
+    get_nearby_stations,
+    get_region_rankings,
+)
 
 LEEDS_LAT, LEEDS_LON = 53.7997, -1.5492
 MANCHESTER_LAT, MANCHESTER_LON = 53.4808, -2.2426
@@ -62,8 +67,10 @@ def test_get_all_fuel_averages_returns_per_fuel_stats(app_engine):
 
 def test_get_all_fuel_averages_excludes_outliers(app_engine):
     with app_engine.connect() as conn:
-        _insert_price(conn, "good", "Good", "E10", 149.9, LEEDS_LAT, LEEDS_LON, "LS1 1AA")
-        _insert_price(conn, "bad",  "Bad",  "E10", 1.3,   LEEDS_LAT, LEEDS_LON, "LS1 1BB")
+        _insert_price(conn, "good", "Good", "E10", 149.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        _insert_price(conn, "bad",  "Bad",  "E10", 1.3,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1BB")
         conn.commit()
     result = get_all_fuel_averages(app_engine)
     assert float(result["E10"]["avg_pence"]) == 149.9

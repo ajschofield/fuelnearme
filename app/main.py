@@ -7,7 +7,12 @@ import streamlit as st
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.geocoders import Nominatim
 
-from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations, get_region_rankings
+from app.db import (
+    get_all_fuel_averages,
+    get_latest_prices,
+    get_nearby_stations,
+    get_region_rankings,
+)
 from app.metrics import brand_averages, summary_stats
 
 st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
@@ -130,20 +135,25 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
             map_style=_MAP_STYLE,
         )
     else:
+        p10 = float(df["price_pence"].quantile(0.10))
+        p90 = float(df["price_pence"].quantile(0.90))
         layer = pdk.Layer(
-            "HeatmapLayer",
+            "HexagonLayer",
             data=df,
             get_position=["longitude", "latitude"],
-            get_weight="price_pence",
-            aggregation=pdk.types.String("MEAN"),
+            get_color_weight="price_pence",
+            color_aggregation=pdk.types.String("MEAN"),
             color_range=_HEATMAP_COLORS,
-            color_domain=[mean - 1.5 * std, mean + 1.5 * std],
-            radius_pixels=45,
-            opacity=0.75,
+            color_domain=[p10, p90],
+            radius=12000,
+            extruded=False,
+            coverage=0.9,
+            pickable=True,
         )
         deck = pdk.Deck(
             layers=[layer],
             initial_view_state=view,
+            tooltip={"text": "Mean: {colorValue}p"},
             map_style=_MAP_STYLE,
         )
 

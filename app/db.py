@@ -2,7 +2,6 @@ import math
 
 import sqlalchemy as sql
 
-
 _MAIN_FUELS = ("E10", "E5", "B7_STANDARD", "B7_PREMIUM")
 
 
