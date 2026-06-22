@@ -8,6 +8,7 @@ import sqlalchemy as sql
 import streamlit as st
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.geocoders import Nominatim
+from streamlit_geolocation import streamlit_geolocation
 
 from app.db import (
     get_all_fuel_averages,
@@ -304,26 +305,34 @@ def render_brands(prices: list[dict]) -> None:
 
 def render_search(engine: sql.Engine, fuel_type: str) -> None:
     st.subheader("Find stations near you", anchor=False)
-    col1, col2 = st.columns([3, 1])
-    with col1:
+
+    input_col, geo_col, radius_col = st.columns([3, 1, 1])
+    with input_col:
         address = st.text_input(
             "Postcode or address",
             placeholder="e.g. LS11 or Leeds city centre",
+            label_visibility="collapsed",
         )
-    with col2:
-        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
+    with geo_col:
+        geo = streamlit_geolocation()
+    with radius_col:
+        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5,
+                           label_visibility="collapsed")
 
-    if not address:
+    # Geolocation takes priority over typed address when available
+    geo_lat = geo.get("latitude") if geo else None
+    geo_lon = geo.get("longitude") if geo else None
+    if geo_lat and geo_lon:
+        lat, lon = float(geo_lat), float(geo_lon)
+    elif address:
+        with st.spinner("Locating..."):
+            coords = geocode(address)
+        if coords is None:
+            st.error("Could not find that location. Try a postcode or town name.")
+            return
+        lat, lon = coords
+    else:
         return
-
-    with st.spinner("Locating..."):
-        coords = geocode(address)
-
-    if coords is None:
-        st.error("Could not find that location. Try a postcode or town name.")
-        return
-
-    lat, lon = coords
     rows = get_nearby_stations(engine, lat, lon, radius_miles=radius)
 
     if not rows:
