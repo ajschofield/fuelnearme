@@ -336,28 +336,50 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
     rows = get_nearby_stations(engine, lat, lon, radius_miles=radius)
 
     if not rows:
-        st.warning(f"No stations found within {radius} miles of {address}.")
+        st.warning(f"No stations found within {radius} miles.")
         return
 
     df = pd.DataFrame(rows)
     df["price_pence"] = df["price_pence"].astype(float)
-    df["price_£"] = (df["price_pence"] / 100).round(3)
-    df = df.sort_values(["fuel_type", "price_pence"])
+    df["price_label"] = df["price_pence"].apply(lambda p: f"{p:.1f}p")
+    p_mean = df["price_pence"].mean()
+    p_std = df["price_pence"].std() or 1.0
+    df["color"] = df["price_pence"].apply(lambda p: price_colour(p, p_mean, p_std))
 
-    for fuel in sorted(df["fuel_type"].unique()):
-        fuel_df = df[df["fuel_type"] == fuel][
-            ["trading_name", "price_£", "postcode", "city",
-             "is_motorway_service_station", "is_supermarket_service_station"]
-        ].rename(columns={
-            "trading_name": "Station",
-            "price_£": "Price (£/L)",
-            "postcode": "Postcode",
-            "city": "City",
-            "is_motorway_service_station": "Motorway",
-            "is_supermarket_service_station": "Supermarket",
-        })
-        st.markdown(f"**{_FUEL_LABELS.get(fuel, fuel)}**")
-        st.dataframe(fuel_df, width="stretch", hide_index=True)
+    map_col, table_col = st.columns([2, 3])
+
+    with map_col:
+        local_layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=df.drop_duplicates("node_id"),
+            get_position=["longitude", "latitude"],
+            get_fill_color="color",
+            get_radius=300,
+            pickable=True,
+        )
+        st.pydeck_chart(pdk.Deck(
+            layers=[local_layer],
+            initial_view_state=pdk.ViewState(latitude=lat, longitude=lon,
+                                              zoom=11, pitch=0),
+            tooltip={"text": "{trading_name}\n{price_label}"},
+            map_style=_MAP_STYLE,
+        ))
+
+    with table_col:
+        df_display = df.sort_values(["fuel_type", "price_pence"])
+        for fuel in sorted(df_display["fuel_type"].unique()):
+            fuel_df = df_display[df_display["fuel_type"] == fuel][
+                ["trading_name", "price_pence", "postcode",
+                 "is_motorway_service_station", "is_supermarket_service_station"]
+            ].rename(columns={
+                "trading_name": "Station",
+                "price_pence": "Price (p)",
+                "postcode": "Postcode",
+                "is_motorway_service_station": "Motorway",
+                "is_supermarket_service_station": "Supermarket",
+            })
+            st.markdown(f"**{_FUEL_LABELS.get(fuel, fuel)}**")
+            st.dataframe(fuel_df, width="stretch", hide_index=True)
 
 
 def main() -> None:
