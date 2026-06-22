@@ -96,6 +96,7 @@ _FUEL_OVERVIEW = [
 
 
 def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
+    st.caption("National average pump price · arrow shows day-on-day change")
     cols = st.columns(len(_FUEL_OVERVIEW))
     for col, (key, label) in zip(cols, _FUEL_OVERVIEW):
         data = averages.get(key)
@@ -198,6 +199,7 @@ def render_regions(rows: list[dict]) -> None:
     if not rows:
         return
     st.subheader("Prices by region")
+    st.caption("Average price per county · click a column header to sort")
     df = pd.DataFrame(rows)
     df["avg_pence"] = df["avg_pence"].astype(float)
     lo, hi = df["avg_pence"].min(), df["avg_pence"].max()
@@ -223,6 +225,7 @@ _MIN_DAYS_BEST = 14
 
 def render_trend(rows: list[dict]) -> None:
     st.subheader("Price trend")
+    st.caption("Daily national average for the selected fuel type")
     if len(rows) < _MIN_DAYS_TREND:
         st.info("Collecting history — check back tomorrow for price trend data.")
         return
@@ -254,6 +257,7 @@ def render_trend(rows: list[dict]) -> None:
 
 def render_best_days(data: dict) -> None:
     st.subheader("Best days to buy")
+    st.caption("Day-of-week price patterns based on historical data")
     days_available = data.get("days_available", 0)
     if days_available < _MIN_DAYS_BEST:
         remaining = _MIN_DAYS_BEST - days_available
@@ -289,6 +293,7 @@ def render_brands(prices: list[dict]) -> None:
     lo, hi = df["Avg price"].min(), df["Avg price"].max()
 
     st.subheader("Average price by brand")
+    st.caption("Brands with 10+ stations · cheapest first")
     st.dataframe(
         df,
         hide_index=True,
