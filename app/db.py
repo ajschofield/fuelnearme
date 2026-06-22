@@ -11,6 +11,7 @@ def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
                 latitude, longitude, postcode, city
             FROM marts.fct_fuel_prices
             WHERE fuel_type = :fuel_type
+              AND price_pence BETWEEN 50 AND 400
             ORDER BY node_id, loaded_at DESC
         """), {"fuel_type": fuel_type})
         return [row._asdict() for row in result]
@@ -31,6 +32,7 @@ def get_nearby_stations(
             FROM marts.fct_fuel_prices
             WHERE latitude  BETWEEN :min_lat AND :max_lat
               AND longitude BETWEEN :min_lon AND :max_lon
+              AND price_pence BETWEEN 50 AND 400
             ORDER BY node_id, fuel_type, loaded_at DESC
         """), {
             "min_lat": lat - deg_lat, "max_lat": lat + deg_lat,

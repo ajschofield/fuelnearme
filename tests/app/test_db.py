@@ -45,6 +45,22 @@ def test_get_latest_prices_returns_only_most_recent(app_engine):
     assert float(result[0]["price_pence"]) == 129.9
 
 
+def test_get_latest_prices_excludes_outlier_prices(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "good", "Good Station", "E10", 149.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        _insert_price(conn, "low", "Bogus Low", "E10", 1.3,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1BB")
+        _insert_price(conn, "high", "Bogus High", "E10", 999.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1CC")
+        conn.commit()
+    result = get_latest_prices(app_engine, fuel_type="E10")
+    node_ids = {r["node_id"] for r in result}
+    assert "good" in node_ids
+    assert "low" not in node_ids
+    assert "high" not in node_ids
+
+
 def test_get_nearby_stations_returns_stations_within_radius(app_engine):
     with app_engine.connect() as conn:
         _insert_price(conn, "abc123", "Leeds Station", "E10", 132.9,
