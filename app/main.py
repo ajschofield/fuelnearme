@@ -378,8 +378,20 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
                 "is_motorway_service_station": "Motorway",
                 "is_supermarket_service_station": "Supermarket",
             })
+            lo = float(fuel_df["Price (p)"].min())
+            hi = float(fuel_df["Price (p)"].max())
             st.markdown(f"**{_FUEL_LABELS.get(fuel, fuel)}**")
-            st.dataframe(fuel_df, width="stretch", hide_index=True)
+            st.dataframe(
+                fuel_df,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Price (p)": st.column_config.ProgressColumn(
+                        "Price (p)", format="%.1fp",
+                        min_value=lo - 1, max_value=hi,
+                    ),
+                },
+            )
 
 
 def main() -> None:
