@@ -303,7 +303,7 @@ def render_brands(prices: list[dict]) -> None:
 
 
 def render_search(engine: sql.Engine, fuel_type: str) -> None:
-    st.subheader("Find stations near you")
+    st.subheader("Find stations near you", anchor=False)
     col1, col2 = st.columns([3, 1])
     with col1:
         address = st.text_input(
@@ -399,6 +399,10 @@ def main() -> None:
     if stats:
         render_metrics(stats)
 
+    render_search(engine, fuel_type)
+
+    st.divider()
+
     view_mode = (
         st.segmented_control(
             "Map view",
@@ -431,9 +435,6 @@ def main() -> None:
     except Exception:
         best_days_data = {"rows": [], "days_available": 0}
     render_best_days(best_days_data)
-
-    st.divider()
-    render_search(engine, fuel_type)
 
 
 if __name__ == "__main__":
