@@ -53,6 +53,16 @@ def get_region_rankings(
     return {"cheapest": rows[:top_n], "dearest": rows[-top_n:][::-1]}
 
 
+def get_last_updated(engine) -> str | None:
+    """ISO timestamp of the most recent pipeline snapshot, or None."""
+    with engine.connect() as conn:
+        result = conn.execute(sql.text(
+            "SELECT MAX(loaded_at) FROM marts.fct_fuel_prices"
+        ))
+        val = result.scalar()
+        return val.isoformat() if val else None
+
+
 def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
     with engine.connect() as conn:
         result = conn.execute(sql.text("""

@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 
 import altair as alt
 import pandas as pd
@@ -11,6 +12,7 @@ from geopy.geocoders import Nominatim
 from app.db import (
     get_all_fuel_averages,
     get_best_days,
+    get_last_updated,
     get_latest_prices,
     get_nearby_stations,
     get_price_trend,
@@ -40,6 +42,22 @@ _HEATMAP_COLORS = [
 ]
 
 _MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+
+
+def _time_ago(iso: str) -> str:
+    dt = datetime.fromisoformat(iso)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    delta = datetime.now(UTC) - dt
+    mins = int(delta.total_seconds() // 60)
+    if mins < 1:
+        return "just now"
+    if mins < 60:
+        return f"{mins} min{'s' if mins != 1 else ''} ago"
+    hours = mins // 60
+    if hours < 24:
+        return f"{hours} hr{'s' if hours != 1 else ''} ago"
+    return f"{hours // 24}d ago"
 
 
 @st.cache_resource
@@ -326,10 +344,20 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
 
 
 def main() -> None:
-    st.title("⛽ FuelNearMe")
-    st.caption("Live UK fuel prices — find the cheapest forecourt near you.")
-
     engine = get_engine()
+
+    try:
+        last_updated = get_last_updated(engine)
+    except Exception:
+        last_updated = None
+
+    title_col, badge_col = st.columns([5, 1])
+    with title_col:
+        st.title("⛽ FuelNearMe")
+        st.caption("Live UK fuel prices — find the cheapest forecourt near you.")
+    with badge_col:
+        if last_updated:
+            st.metric("Updated", _time_ago(last_updated))
 
     try:
         fuel_overview = get_all_fuel_averages(engine)
