@@ -309,18 +309,44 @@ def render_brands(prices: list[dict]) -> None:
     )
 
 
+def _geo_allowed() -> bool:
+    """Browser geolocation requires HTTPS or localhost."""
+    try:
+        headers = st.context.headers
+        host = headers.get("host", "")
+        return host.startswith("localhost") or host.startswith("127.")
+    except Exception:
+        return False
+
+
 def render_search(engine: sql.Engine, fuel_type: str) -> None:
     st.subheader("Find stations near you", anchor=False)
+    st.caption("Enter a postcode or address to find the cheapest stations nearby")
 
-    input_col, geo_col, radius_col = st.columns([3, 1, 1])
+    geo_ok = _geo_allowed()
+    if geo_ok:
+        input_col, geo_col, radius_col = st.columns([3, 1, 1])
+    else:
+        input_col, radius_col = st.columns([4, 1])
+
     with input_col:
         address = st.text_input(
             "Postcode or address",
             placeholder="e.g. LS11 or Leeds city centre",
             label_visibility="collapsed",
         )
-    with geo_col:
-        geo = streamlit_geolocation()
+
+    geo = None
+    if geo_ok:
+        with geo_col:
+            geo = streamlit_geolocation()
+    else:
+        st.caption(
+            "ℹ️ 'Near me' requires HTTPS — enter a postcode above instead.",
+            help="Browsers block geolocation on plain HTTP (non-localhost). "
+                 "Access via https:// or localhost to enable it.",
+        )
+
     with radius_col:
         radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5,
                            label_visibility="collapsed")
@@ -400,7 +426,31 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
             )
 
 
+_MOBILE_CSS = """
+<style>
+@media (max-width: 768px) {
+    /* Stack all multi-column layouts vertically on mobile */
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        width: 100% !important;
+        flex: none !important;
+        min-width: 100% !important;
+    }
+    /* Prevent the wide-layout gutter from eating screen space */
+    .main .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+}
+</style>
+"""
+
+
 def main() -> None:
+    st.markdown(_MOBILE_CSS, unsafe_allow_html=True)
     engine = get_engine()
 
     try:
