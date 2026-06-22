@@ -7,7 +7,7 @@ import streamlit as st
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.geocoders import Nominatim
 
-from app.db import get_latest_prices, get_nearby_stations
+from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations
 from app.metrics import brand_averages, summary_stats
 
 st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
@@ -57,6 +57,25 @@ def price_colour(price: float, mean: float, std: float) -> list[int]:
     r = int(255 * ratio)
     g = int(255 * (1.0 - ratio))
     return [r, g, 0, 220]
+
+
+_FUEL_OVERVIEW = [
+    ("E10", "E10"),
+    ("E5", "E5 Super"),
+    ("B7_STANDARD", "Diesel"),
+    ("B7_PREMIUM", "Premium"),
+]
+
+
+def render_fuel_overview(averages: dict) -> None:
+    cols = st.columns(len(_FUEL_OVERVIEW))
+    for col, (key, label) in zip(cols, _FUEL_OVERVIEW):
+        data = averages.get(key)
+        if data:
+            col.metric(label, f"{float(data['avg_pence']):.1f}p",
+                       help=f"{data['stations']:,} stations")
+        else:
+            col.metric(label, "—")
 
 
 def render_metrics(stats: dict) -> None:
@@ -215,6 +234,14 @@ def main() -> None:
     st.caption("Live UK fuel prices — find the cheapest forecourt near you.")
 
     engine = get_engine()
+
+    try:
+        fuel_overview = get_all_fuel_averages(engine)
+    except Exception:
+        fuel_overview = {}
+    if fuel_overview:
+        render_fuel_overview(fuel_overview)
+        st.divider()
 
     fuel_type = (
         st.segmented_control(

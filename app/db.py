@@ -3,6 +3,30 @@ import math
 import sqlalchemy as sql
 
 
+_MAIN_FUELS = ("E10", "E5", "B7_STANDARD", "B7_PREMIUM")
+
+
+def get_all_fuel_averages(engine) -> dict[str, dict]:
+    """Latest average price and station count for each main fuel type."""
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            SELECT fuel_type,
+                   ROUND(AVG(price_pence)::numeric, 1) AS avg_pence,
+                   COUNT(*) AS stations
+            FROM (
+                SELECT DISTINCT ON (node_id, fuel_type)
+                    node_id, fuel_type, price_pence
+                FROM marts.fct_fuel_prices
+                WHERE fuel_type = ANY(:fuels)
+                  AND price_pence BETWEEN 50 AND 400
+                ORDER BY node_id, fuel_type, loaded_at DESC
+            ) latest
+            GROUP BY fuel_type
+        """), {"fuels": list(_MAIN_FUELS)})
+        rows = [row._asdict() for row in result]
+        return {row["fuel_type"]: row for row in rows}
+
+
 def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
     with engine.connect() as conn:
         result = conn.execute(sql.text("""
