@@ -7,7 +7,7 @@ import streamlit as st
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from geopy.geocoders import Nominatim
 
-from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations
+from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations, get_region_rankings
 from app.metrics import brand_averages, summary_stats
 
 st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
@@ -154,6 +154,32 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     )
 
 
+def render_regions(rankings: dict) -> None:
+    cheapest = rankings.get("cheapest", [])
+    dearest = rankings.get("dearest", [])
+    if not cheapest and not dearest:
+        return
+
+    st.subheader("Cheapest & most expensive regions")
+    left, right = st.columns(2)
+
+    with left:
+        st.markdown("**Cheapest**")
+        for r in cheapest:
+            st.markdown(
+                f"{r['county']} &nbsp; `{float(r['avg_pence']):.1f}p`",
+                unsafe_allow_html=True,
+            )
+
+    with right:
+        st.markdown("**Most expensive**")
+        for r in dearest:
+            st.markdown(
+                f"{r['county']} &nbsp; `{float(r['avg_pence']):.1f}p`",
+                unsafe_allow_html=True,
+            )
+
+
 def render_brands(prices: list[dict]) -> None:
     rows = brand_averages(prices)
     if len(rows) < 2:
@@ -277,6 +303,13 @@ def main() -> None:
     render_map(prices, view_mode)
 
     render_brands(prices)
+
+    try:
+        rankings = get_region_rankings(engine, fuel_type=fuel_type)
+    except Exception:
+        rankings = {}
+    render_regions(rankings)
+
     st.divider()
     render_search(engine, fuel_type)
 

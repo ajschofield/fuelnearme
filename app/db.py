@@ -27,6 +27,33 @@ def get_all_fuel_averages(engine) -> dict[str, dict]:
         return {row["fuel_type"]: row for row in rows}
 
 
+def get_region_rankings(
+    engine, fuel_type: str = "E10", top_n: int = 5, min_stations: int = 10
+) -> dict[str, list[dict]]:
+    """Cheapest and most expensive counties for a given fuel type."""
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            SELECT county,
+                   ROUND(AVG(price_pence)::numeric, 1) AS avg_pence,
+                   COUNT(*) AS stations
+            FROM (
+                SELECT DISTINCT ON (node_id)
+                    node_id, county, price_pence
+                FROM marts.fct_fuel_prices
+                WHERE fuel_type = :fuel_type
+                  AND price_pence BETWEEN 50 AND 400
+                  AND county IS NOT NULL
+                  AND county <> ''
+                ORDER BY node_id, loaded_at DESC
+            ) latest
+            GROUP BY county
+            HAVING COUNT(*) >= :min_stations
+            ORDER BY avg_pence
+        """), {"fuel_type": fuel_type, "min_stations": min_stations})
+        rows = [row._asdict() for row in result]
+    return {"cheapest": rows[:top_n], "dearest": rows[-top_n:][::-1]}
+
+
 def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
     with engine.connect() as conn:
         result = conn.execute(sql.text("""

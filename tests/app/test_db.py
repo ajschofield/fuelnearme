@@ -1,24 +1,25 @@
 import sqlalchemy as sql
 
-from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations
+from app.db import get_all_fuel_averages, get_latest_prices, get_nearby_stations, get_region_rankings
 
 LEEDS_LAT, LEEDS_LON = 53.7997, -1.5492
 MANCHESTER_LAT, MANCHESTER_LON = 53.4808, -2.2426
 
 
 def _insert_price(conn, node_id, trading_name, fuel_type, price_pence,
-                  lat, lon, postcode, loaded_at="2026-06-01 00:00:00+00"):
+                  lat, lon, postcode, loaded_at="2026-06-01 00:00:00+00",
+                  county=None):
     conn.execute(sql.text("""
         INSERT INTO marts.fct_fuel_prices
             (node_id, trading_name, fuel_type, price_pence,
-             latitude, longitude, postcode, city, loaded_at,
+             latitude, longitude, postcode, city, county, loaded_at,
              is_motorway_service_station, is_supermarket_service_station)
         VALUES
             (:node_id, :trading_name, :fuel_type, :price_pence,
-             :lat, :lon, :postcode, 'Leeds', :loaded_at, false, false)
+             :lat, :lon, :postcode, 'Leeds', :county, :loaded_at, false, false)
     """), dict(node_id=node_id, trading_name=trading_name, fuel_type=fuel_type,
                price_pence=price_pence, lat=lat, lon=lon,
-               postcode=postcode, loaded_at=loaded_at))
+               postcode=postcode, county=county, loaded_at=loaded_at))
 
 
 def test_get_latest_prices_returns_rows(app_engine):
@@ -109,3 +110,44 @@ def test_get_nearby_stations_returns_all_fuel_types(app_engine):
     fuel_types = {r["fuel_type"] for r in result}
     assert "E10" in fuel_types
     assert "E5" in fuel_types
+
+
+def _insert_county_prices(conn, county, prices, fuel_type="E10"):
+    for i, price in enumerate(prices):
+        _insert_price(conn, f"{county}-{i}", f"Station {i}", fuel_type, price,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA", county=county)
+
+
+def test_get_region_rankings_sorts_cheapest_first(app_engine):
+    with app_engine.connect() as conn:
+        _insert_county_prices(conn, "Yorkshire", [140.0] * 12)
+        _insert_county_prices(conn, "Kent",      [160.0] * 12)
+        _insert_county_prices(conn, "Cornwall",  [150.0] * 12)
+        conn.commit()
+    result = get_region_rankings(app_engine, fuel_type="E10", top_n=3, min_stations=10)
+    assert result["cheapest"][0]["county"] == "Yorkshire"
+    assert result["dearest"][0]["county"] == "Kent"
+
+
+def test_get_region_rankings_enforces_min_stations(app_engine):
+    with app_engine.connect() as conn:
+        _insert_county_prices(conn, "BigCounty",   [140.0] * 15)
+        _insert_county_prices(conn, "SmallCounty", [120.0] * 3)
+        conn.commit()
+    result = get_region_rankings(app_engine, fuel_type="E10", min_stations=10)
+    counties = {r["county"] for r in result["cheapest"]}
+    assert "BigCounty" in counties
+    assert "SmallCounty" not in counties
+
+
+def test_get_region_rankings_excludes_null_county(app_engine):
+    with app_engine.connect() as conn:
+        _insert_county_prices(conn, "RealCounty", [145.0] * 12)
+        for i in range(12):
+            _insert_price(conn, f"nc-{i}", "No County", "E10", 100.0,
+                          LEEDS_LAT, LEEDS_LON, "LS1 1AA", county=None)
+        conn.commit()
+    result = get_region_rankings(app_engine, fuel_type="E10", min_stations=10)
+    counties = {r["county"] for r in result["cheapest"]}
+    assert None not in counties
+    assert "RealCounty" in counties
