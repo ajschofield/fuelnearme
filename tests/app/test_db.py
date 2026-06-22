@@ -2,8 +2,10 @@ import sqlalchemy as sql
 
 from app.db import (
     get_all_fuel_averages,
+    get_best_days,
     get_latest_prices,
     get_nearby_stations,
+    get_price_trend,
     get_region_rankings,
 )
 
@@ -158,3 +160,52 @@ def test_get_region_rankings_excludes_null_county(app_engine):
     counties = {r["county"] for r in result["cheapest"]}
     assert None not in counties
     assert "RealCounty" in counties
+
+
+def test_get_price_trend_returns_one_row_per_day(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "a", "S", "E10", 150.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA",
+                      loaded_at="2026-06-01 00:00:00+00")
+        _insert_price(conn, "b", "S", "E10", 160.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1BB",
+                      loaded_at="2026-06-01 12:00:00+00")
+        _insert_price(conn, "c", "S", "E10", 155.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1CC",
+                      loaded_at="2026-06-02 00:00:00+00")
+        conn.commit()
+    result = get_price_trend(app_engine, fuel_type="E10")
+    assert len(result) == 2
+    assert float(result[0]["avg_pence"]) == 155.0
+    assert float(result[1]["avg_pence"]) == 155.0
+
+
+def test_get_price_trend_excludes_outliers(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "good", "S", "E10", 150.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA",
+                      loaded_at="2026-06-01 00:00:00+00")
+        _insert_price(conn, "bad", "S", "E10", 1.0,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1BB",
+                      loaded_at="2026-06-01 00:00:00+00")
+        conn.commit()
+    result = get_price_trend(app_engine, fuel_type="E10")
+    assert float(result[0]["avg_pence"]) == 150.0
+
+
+def test_get_best_days_counts_distinct_days(app_engine):
+    with app_engine.connect() as conn:
+        for day in ["2026-06-01", "2026-06-02", "2026-06-03"]:
+            _insert_price(conn, f"s-{day}", "S", "E10", 150.0,
+                          LEEDS_LAT, LEEDS_LON, "LS1 1AA",
+                          loaded_at=f"{day} 00:00:00+00")
+        conn.commit()
+    result = get_best_days(app_engine, fuel_type="E10")
+    assert result["days_available"] == 3
+    assert len(result["rows"]) >= 1
+
+
+def test_get_best_days_empty_with_no_data(app_engine):
+    result = get_best_days(app_engine, fuel_type="E10")
+    assert result["days_available"] == 0
+    assert result["rows"] == []

@@ -67,6 +67,45 @@ def get_latest_prices(engine, fuel_type: str = "E10") -> list[dict]:
         return [row._asdict() for row in result]
 
 
+def get_price_trend(engine, fuel_type: str = "E10") -> list[dict]:
+    """Daily national average price, oldest first. Empty when < 2 days exist."""
+    with engine.connect() as conn:
+        result = conn.execute(sql.text("""
+            SELECT loaded_at::date AS day,
+                   ROUND(AVG(price_pence)::numeric, 1) AS avg_pence
+            FROM marts.fct_fuel_prices
+            WHERE fuel_type = :fuel_type
+              AND price_pence BETWEEN 50 AND 400
+            GROUP BY loaded_at::date
+            ORDER BY day
+        """), {"fuel_type": fuel_type})
+        return [row._asdict() for row in result]
+
+
+def get_best_days(engine, fuel_type: str = "E10") -> dict:
+    """Day-of-week average prices and count of distinct days of data available."""
+    with engine.connect() as conn:
+        distinct_days = conn.execute(sql.text("""
+            SELECT COUNT(DISTINCT loaded_at::date)
+            FROM marts.fct_fuel_prices
+            WHERE fuel_type = :fuel_type
+              AND price_pence BETWEEN 50 AND 400
+        """), {"fuel_type": fuel_type}).scalar() or 0
+
+        result = conn.execute(sql.text("""
+            SELECT EXTRACT(DOW FROM loaded_at)::int AS dow,
+                   TRIM(TO_CHAR(loaded_at, 'Day'))  AS day_name,
+                   ROUND(AVG(price_pence)::numeric, 1) AS avg_pence
+            FROM marts.fct_fuel_prices
+            WHERE fuel_type = :fuel_type
+              AND price_pence BETWEEN 50 AND 400
+            GROUP BY dow, day_name
+            ORDER BY dow
+        """), {"fuel_type": fuel_type})
+        rows = [row._asdict() for row in result]
+        return {"rows": rows, "days_available": int(distinct_days)}
+
+
 def get_nearby_stations(
     engine, lat: float, lon: float, radius_miles: float = 5.0
 ) -> list[dict]:

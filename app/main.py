@@ -9,8 +9,10 @@ from geopy.geocoders import Nominatim
 
 from app.db import (
     get_all_fuel_averages,
+    get_best_days,
     get_latest_prices,
     get_nearby_stations,
+    get_price_trend,
     get_region_rankings,
 )
 from app.metrics import brand_averages, summary_stats
@@ -190,6 +192,48 @@ def render_regions(rankings: dict) -> None:
             )
 
 
+_MIN_DAYS_TREND = 2
+_MIN_DAYS_BEST = 14
+
+
+def render_trend(rows: list[dict]) -> None:
+    st.subheader("Price trend")
+    if len(rows) < _MIN_DAYS_TREND:
+        st.info("Collecting history — check back tomorrow for price trend data.")
+        return
+    df = pd.DataFrame(rows)
+    df["day"] = pd.to_datetime(df["day"])
+    df["avg_pence"] = df["avg_pence"].astype(float)
+    df = df.set_index("day")
+    st.line_chart(df["avg_pence"], y_label="Average price (p)")
+
+
+def render_best_days(data: dict) -> None:
+    st.subheader("Best days to buy")
+    days_available = data.get("days_available", 0)
+    if days_available < _MIN_DAYS_BEST:
+        remaining = _MIN_DAYS_BEST - days_available
+        st.info(
+            f"Need {remaining} more day{'s' if remaining != 1 else ''} of data "
+            "to identify day-of-week price patterns."
+        )
+        return
+    rows = data.get("rows", [])
+    if not rows:
+        return
+    df = pd.DataFrame(rows)
+    df["avg_pence"] = df["avg_pence"].astype(float)
+    best = df.loc[df["avg_pence"].idxmin(), "day_name"]
+    st.caption(f"Historically cheapest day: **{best}**")
+    st.dataframe(
+        df[["day_name", "avg_pence"]].rename(
+            columns={"day_name": "Day", "avg_pence": "Avg price (p)"}
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+
+
 def render_brands(prices: list[dict]) -> None:
     rows = brand_averages(prices)
     if len(rows) < 2:
@@ -312,6 +356,12 @@ def main() -> None:
     )
     render_map(prices, view_mode)
 
+    try:
+        trend = get_price_trend(engine, fuel_type=fuel_type)
+    except Exception:
+        trend = []
+    render_trend(trend)
+
     render_brands(prices)
 
     try:
@@ -319,6 +369,12 @@ def main() -> None:
     except Exception:
         rankings = {}
     render_regions(rankings)
+
+    try:
+        best_days_data = get_best_days(engine, fuel_type=fuel_type)
+    except Exception:
+        best_days_data = {"rows": [], "days_available": 0}
+    render_best_days(best_days_data)
 
     st.divider()
     render_search(engine, fuel_type)
