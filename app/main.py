@@ -1,5 +1,6 @@
 import os
 
+import altair as alt
 import pandas as pd
 import pydeck as pdk
 import sqlalchemy as sql
@@ -17,7 +18,7 @@ from app.db import (
 )
 from app.metrics import brand_averages, summary_stats
 
-st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="centered")
+st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
 
 _FUEL_LABELS = {
     "E10": "E10 (Petrol)",
@@ -172,18 +173,15 @@ def render_regions(rankings: dict) -> None:
     if not cheapest and not dearest:
         return
 
-    st.subheader("Cheapest & most expensive regions")
-    left, right = st.columns(2)
-
-    with left:
+    st.subheader("Regions")
+    if cheapest:
         st.markdown("**Cheapest**")
         for r in cheapest:
             st.markdown(
                 f"{r['county']} &nbsp; `{float(r['avg_pence']):.1f}p`",
                 unsafe_allow_html=True,
             )
-
-    with right:
+    if dearest:
         st.markdown("**Most expensive**")
         for r in dearest:
             st.markdown(
@@ -204,8 +202,26 @@ def render_trend(rows: list[dict]) -> None:
     df = pd.DataFrame(rows)
     df["day"] = pd.to_datetime(df["day"])
     df["avg_pence"] = df["avg_pence"].astype(float)
-    df = df.set_index("day")
-    st.line_chart(df["avg_pence"], y_label="Average price (p)")
+    y_min, y_max = df["avg_pence"].min(), df["avg_pence"].max()
+    pad = max(2.0, (y_max - y_min) * 0.15)
+    chart = (
+        alt.Chart(df)
+        .mark_line(color="#e63946", strokeWidth=2)
+        .encode(
+            x=alt.X("day:T", title=None, axis=alt.Axis(format="%d %b")),
+            y=alt.Y(
+                "avg_pence:Q",
+                title="Price (p)",
+                scale=alt.Scale(domain=[y_min - pad, y_max + pad]),
+            ),
+            tooltip=[
+                alt.Tooltip("day:T", title="Date", format="%d %b %Y"),
+                alt.Tooltip("avg_pence:Q", title="Avg price (p)", format=".1f"),
+            ],
+        )
+        .properties(height=220)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
 
 def render_best_days(data: dict) -> None:
@@ -362,13 +378,15 @@ def main() -> None:
         trend = []
     render_trend(trend)
 
-    render_brands(prices)
-
-    try:
-        rankings = get_region_rankings(engine, fuel_type=fuel_type)
-    except Exception:
-        rankings = {}
-    render_regions(rankings)
+    col_left, col_right = st.columns([3, 2])
+    with col_left:
+        render_brands(prices)
+    with col_right:
+        try:
+            rankings = get_region_rankings(engine, fuel_type=fuel_type)
+        except Exception:
+            rankings = {}
+        render_regions(rankings)
 
     try:
         best_days_data = get_best_days(engine, fuel_type=fuel_type)
