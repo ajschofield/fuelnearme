@@ -12,13 +12,13 @@ from streamlit_geolocation import streamlit_geolocation
 
 from app.db import (
     get_all_fuel_averages,
+    get_all_regions,
     get_best_days,
     get_fuel_deltas,
     get_last_updated,
     get_latest_prices,
     get_nearby_stations,
     get_price_trend,
-    get_region_rankings,
 )
 from app.metrics import brand_averages, summary_stats
 
@@ -194,27 +194,27 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     )
 
 
-def render_regions(rankings: dict) -> None:
-    cheapest = rankings.get("cheapest", [])
-    dearest = rankings.get("dearest", [])
-    if not cheapest and not dearest:
+def render_regions(rows: list[dict]) -> None:
+    if not rows:
         return
-
-    st.subheader("Regions")
-    if cheapest:
-        st.markdown("**Cheapest**")
-        for r in cheapest:
-            st.markdown(
-                f"{r['county']} &nbsp; `{float(r['avg_pence']):.1f}p`",
-                unsafe_allow_html=True,
-            )
-    if dearest:
-        st.markdown("**Most expensive**")
-        for r in dearest:
-            st.markdown(
-                f"{r['county']} &nbsp; `{float(r['avg_pence']):.1f}p`",
-                unsafe_allow_html=True,
-            )
+    st.subheader("Prices by region")
+    df = pd.DataFrame(rows)
+    df["avg_pence"] = df["avg_pence"].astype(float)
+    lo, hi = df["avg_pence"].min(), df["avg_pence"].max()
+    df = df.rename(columns={
+        "county": "County", "avg_pence": "Avg price (p)", "stations": "Stations"
+    })
+    st.dataframe(
+        df,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Avg price (p)": st.column_config.ProgressColumn(
+                "Avg price (p)", format="%.1fp",
+                min_value=float(lo) - 1, max_value=float(hi),
+            ),
+        },
+    )
 
 
 _MIN_DAYS_TREND = 2
@@ -469,10 +469,10 @@ def main() -> None:
         render_brands(prices)
     with col_right:
         try:
-            rankings = get_region_rankings(engine, fuel_type=fuel_type)
+            region_rows = get_all_regions(engine, fuel_type=fuel_type)
         except Exception:
-            rankings = {}
-        render_regions(rankings)
+            region_rows = []
+        render_regions(region_rows)
 
     try:
         best_days_data = get_best_days(engine, fuel_type=fuel_type)

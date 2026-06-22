@@ -30,6 +30,14 @@ def get_region_rankings(
     engine, fuel_type: str = "E10", top_n: int = 5, min_stations: int = 10
 ) -> dict[str, list[dict]]:
     """Cheapest and most expensive counties for a given fuel type."""
+    rows = get_all_regions(engine, fuel_type=fuel_type, min_stations=min_stations)
+    return {"cheapest": rows[:top_n], "dearest": rows[-top_n:][::-1]}
+
+
+def get_all_regions(
+    engine, fuel_type: str = "E10", min_stations: int = 10
+) -> list[dict]:
+    """All counties sorted cheapest first, for the regions table."""
     with engine.connect() as conn:
         result = conn.execute(sql.text("""
             SELECT county,
@@ -49,8 +57,7 @@ def get_region_rankings(
             HAVING COUNT(*) >= :min_stations
             ORDER BY avg_pence
         """), {"fuel_type": fuel_type, "min_stations": min_stations})
-        rows = [row._asdict() for row in result]
-    return {"cheapest": rows[:top_n], "dearest": rows[-top_n:][::-1]}
+        return [row._asdict() for row in result]
 
 
 def get_last_updated(engine) -> str | None:
