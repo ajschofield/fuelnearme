@@ -224,27 +224,29 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
 
 
 def _price_bar_chart(df: pd.DataFrame, cat_col: str, val_col: str) -> alt.Chart:
-    """Horizontal bar chart of prices, value printed at each bar's end.
-
-    The x-axis starts just below the cheapest value so closely-clustered prices
-    are still visually distinguishable; the printed labels keep it honest.
-    """
+    """Horizontal bar chart of prices, value printed at each bar's end."""
     df = df.copy()
     df[val_col] = df[val_col].astype(float)
     lo, hi = df[val_col].min(), df[val_col].max()
     pad = max(1.0, (hi - lo) * 0.1)
     base = alt.Chart(df).encode(
-        y=alt.Y(f"{cat_col}:N", sort="x", title=None,
-                axis=alt.Axis(labelLimit=220)),
-        x=alt.X(f"{val_col}:Q", title="Avg price (p)",
-                scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
-                axis=alt.Axis(format=".0f")),
+        y=alt.Y(f"{cat_col}:N", sort="x", title=None),
+        x=alt.X(
+            f"{val_col}:Q", title="Avg price (p/l)",
+            scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
+            axis=alt.Axis(format=".0f"),
+        ),
     )
     bars = base.mark_bar(color="#e63946")
     labels = base.mark_text(align="left", dx=4, fontSize=12).encode(
         text=alt.Text(f"{val_col}:Q", format=".1f"),
     )
-    return (bars + labels).properties(height=alt.Step(28))
+    return (
+        (bars + labels)
+        .properties(height=alt.Step(28))
+        .configure_axisY(labelLimit=200, labelFontSize=12)
+        .configure_axisX(titlePadding=12)
+    )
 
 
 def render_regions(rows: list[dict], fuel_label: str = "") -> None:
