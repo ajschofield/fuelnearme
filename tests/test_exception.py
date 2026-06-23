@@ -1,5 +1,3 @@
-import pytest
-
 from fnme.exceptions import DataFetchError, InvalidDataError, LocationError
 
 

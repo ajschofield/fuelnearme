@@ -1,0 +1,12 @@
+fuelnearme:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5433') | int }}"
+      user: "{{ env_var('DBT_USER', 'fuelnearme') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'fuelnearme') }}"
+      dbname: "{{ env_var('DBT_DBNAME', 'fuelnearme') }}"
+      schema: public
+      threads: 4

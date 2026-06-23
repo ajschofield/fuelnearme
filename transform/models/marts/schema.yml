@@ -1,0 +1,159 @@
+version: 2
+
+models:
+  - name: dim_stations
+    columns:
+      - name: node_id
+        tests:
+          - not_null
+          - unique
+      - name: trading_name
+        tests:
+          - not_null
+      - name: latitude
+        tests:
+          - not_null
+      - name: longitude
+        tests:
+          - not_null
+
+  - name: fct_fuel_prices
+    columns:
+      - name: node_id
+        tests:
+          - not_null
+      - name: fuel_type
+        tests:
+          - not_null
+      - name: price_pence
+        tests:
+          - not_null
+      - name: loaded_at
+        tests:
+          - not_null
+
+unit_tests:
+  - name: test_dim_stations_excludes_opening_times
+    model: dim_stations
+    given:
+      - input: ref('stg_stations')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            brand_name: "Test Brand"
+            is_same_trading_and_brand_name: true
+            temporary_closure: false
+            permanent_closure: false
+            permanent_closure_date: null
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            address_line_1: "1 Test St"
+            address_line_2: null
+            city: "Leeds"
+            county: "West Yorkshire"
+            country: "England"
+            postcode: "LS1 1AA"
+            latitude: 53.7997
+            longitude: -1.5492
+            amenities: '["car_wash"]'
+            opening_times: '{"monday": {"open": "06:00:00", "close": "22:00:00"}}'
+            fuel_types: '["E5", "E10"]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          trading_name: "Test Station"
+          postcode: "LS1 1AA"
+          latitude: 53.7997
+
+  - name: test_fct_fuel_prices_contains_location_fields
+    model: fct_fuel_prices
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_prices_with_station')
+        rows:
+          - node_id: "abc123"
+            trading_name: "Test Station"
+            fuel_type: "E5"
+            price_pence: 159.9
+            price_last_updated: "2026-02-17T16:03:04.938Z"
+            price_change_effective_timestamp: "2026-02-17T16:00:00.000Z"
+            loaded_at: "2026-06-01 00:00:00+00"
+            brand_name: "Test Brand"
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            address_line_1: "1 Test St"
+            city: "Leeds"
+            county: "West Yorkshire"
+            country: "England"
+            postcode: "LS1 1AA"
+            latitude: 53.7997
+            longitude: -1.5492
+            temporary_closure: false
+            permanent_closure: false
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "E5"
+          price_pence: 159.9
+          postcode: "LS1 1AA"
+          latitude: 53.7997
+          longitude: -1.5492
+
+  - name: test_fct_fuel_prices_multiple_loads_produce_multiple_rows
+    model: fct_fuel_prices
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_prices_with_station')
+        rows:
+          - node_id: "abc123"
+            trading_name: "Test Station"
+            fuel_type: "E5"
+            price_pence: 159.9
+            price_last_updated: "2026-02-17T16:03:04.938Z"
+            price_change_effective_timestamp: "2026-02-17T16:00:00.000Z"
+            loaded_at: "2026-06-01 00:00:00+00"
+            brand_name: "Test Brand"
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            address_line_1: "1 Test St"
+            city: "Leeds"
+            county: "West Yorkshire"
+            country: "England"
+            postcode: "LS1 1AA"
+            latitude: 53.7997
+            longitude: -1.5492
+            temporary_closure: false
+            permanent_closure: false
+          - node_id: "abc123"
+            trading_name: "Test Station"
+            fuel_type: "E5"
+            price_pence: 155.9
+            price_last_updated: "2026-06-10T08:00:00.000Z"
+            price_change_effective_timestamp: "2026-06-10T08:00:00.000Z"
+            loaded_at: "2026-06-10 08:00:00+00"
+            brand_name: "Test Brand"
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            address_line_1: "1 Test St"
+            city: "Leeds"
+            county: "West Yorkshire"
+            country: "England"
+            postcode: "LS1 1AA"
+            latitude: 53.7997
+            longitude: -1.5492
+            temporary_closure: false
+            permanent_closure: false
+    expect:
+      rows:
+        - node_id: "abc123"
+          fuel_type: "E5"
+          price_pence: 159.9
+        - node_id: "abc123"
+          fuel_type: "E5"
+          price_pence: 155.9

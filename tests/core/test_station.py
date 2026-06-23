@@ -47,8 +47,20 @@ def test_process_stations_should_convert_prices_and_handle_nan():
 
 def test_sort_stations_should_sort_by_distance():
     stations = [
-        {"station_name": "B", "distance": 2.0, "e5_price": 1.5, "e10_price": 1.4, "diesel_price": 1.6},
-        {"station_name": "A", "distance": 1.0, "e5_price": 1.4, "e10_price": 1.3, "diesel_price": 1.5},
+        {
+            "station_name": "B",
+            "distance": 2.0,
+            "e5_price": 1.5,
+            "e10_price": 1.4,
+            "diesel_price": 1.6,
+        },
+        {
+            "station_name": "A",
+            "distance": 1.0,
+            "e5_price": 1.4,
+            "e10_price": 1.3,
+            "diesel_price": 1.5,
+        },
     ]
 
     sorted_stations = sort_stations(stations, "distance")
@@ -58,8 +70,20 @@ def test_sort_stations_should_sort_by_distance():
 
 def test_sort_stations_should_sort_with_none_last():
     stations = [
-        {"station_name": "A", "distance": 1.0, "e5_price": None, "e10_price": 1.3, "diesel_price": 1.5},
-        {"station_name": "B", "distance": 2.0, "e5_price": 1.4, "e10_price": 1.2, "diesel_price": 1.4},
+        {
+            "station_name": "A",
+            "distance": 1.0,
+            "e5_price": None,
+            "e10_price": 1.3,
+            "diesel_price": 1.5,
+        },
+        {
+            "station_name": "B",
+            "distance": 2.0,
+            "e5_price": 1.4,
+            "e10_price": 1.2,
+            "diesel_price": 1.4,
+        },
     ]
 
     sorted_stations = sort_stations(stations, "e5")
