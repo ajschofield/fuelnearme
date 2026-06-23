@@ -46,6 +46,7 @@ def brand_averages(
         brand = p.get("brand_name")
         if not brand:
             continue
+        brand = brand.strip().title()
         groups.setdefault(brand, []).append(float(p["price_pence"]))
 
     rows = [
