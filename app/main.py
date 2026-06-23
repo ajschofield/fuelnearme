@@ -20,7 +20,7 @@ from app.db import (
     get_nearby_stations,
     get_price_trend,
 )
-from app.metrics import brand_averages, summary_stats
+from app.metrics import brand_averages, pretty_name, summary_stats
 
 _FUEL_LABELS = {
     "E10": "E10",
@@ -42,6 +42,8 @@ _HEATMAP_COLORS = [
 ]
 
 _MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+
+_MAX_SEARCH_RESULTS = 20
 
 
 def _time_ago(iso: str) -> str:
@@ -199,12 +201,14 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
         )
 
     st.pydeck_chart(deck)
+    grad = "linear-gradient(to right," + ",".join(
+        f"rgb({r},{g},{b})" for r, g, b in _HEATMAP_COLORS
+    ) + ")"
     st.markdown(
         f"""
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
           <span style="font-size:12px;">Cheaper</span>
-          <div style="width:160px;height:10px;border-radius:5px;
-            background:linear-gradient(to right,#1a9850,#91cf60,#d9ef8b,#fee08b,#fc8d59,#d73027);">
+          <div style="width:160px;height:10px;border-radius:5px;background:{grad};">
           </div>
           <span style="font-size:12px;">Pricier</span>
           <span style="font-size:12px;color:gray;">
@@ -359,7 +363,7 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
 
     geo_ok = _geo_allowed()
 
-    # Geolocation widget must live outside st.form (custom components can't be inside one)
+    # Geolocation widget must live outside st.form (components can't be inside one)
     geo = streamlit_geolocation() if geo_ok else None
 
     if not geo_ok:
@@ -403,65 +407,92 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
         lat, lon = coords
     else:
         return
-    rows = get_nearby_stations(engine, lat, lon, radius_miles=radius)
+    rows = get_nearby_stations(engine, lat, lon, radius_miles=radius,
+                               fuel_type=fuel_type)
 
     if not rows:
-        st.warning(f"No stations found within {radius} miles.")
+        st.warning(
+            f"No {_FUEL_LABELS[fuel_type]} stations found within {radius} miles."
+        )
         return
 
-    df = pd.DataFrame(rows)
-    df["price_pence"] = df["price_pence"].astype(float)
-    df["price_label"] = df["price_pence"].apply(lambda p: f"{p:.1f}p")
-    p_mean = df["price_pence"].mean()
-    p_std = df["price_pence"].std() or 1.0
-    df["color"] = df["price_pence"].apply(lambda p: price_colour(p, p_mean, p_std))
+    rows = sorted(rows, key=lambda r: float(r["price_pence"]))[:_MAX_SEARCH_RESULTS]
+    for i, r in enumerate(rows, start=1):
+        r["rank"] = i
+        r["price"] = float(r["price_pence"])
 
-    map_col, table_col = st.columns([2, 3])
+    st.caption(
+        f"{len(rows)} cheapest **{_FUEL_LABELS[fuel_type]}** "
+        f"station{'s' if len(rows) != 1 else ''} within {radius} miles · "
+        "nearest prices first by value"
+    )
 
+    map_col, list_col = st.columns([2, 3])
     with map_col:
-        local_layer = pdk.Layer(
-            "ScatterplotLayer",
-            data=df.drop_duplicates("node_id"),
-            get_position=["longitude", "latitude"],
-            get_fill_color="color",
-            get_radius=300,
-            pickable=True,
-        )
-        st.pydeck_chart(pdk.Deck(
-            layers=[local_layer],
-            initial_view_state=pdk.ViewState(latitude=lat, longitude=lon,
-                                              zoom=11, pitch=0),
-            tooltip={"text": "{trading_name}\n{price_label}"},
-            map_style=_MAP_STYLE,
-        ))
+        _render_search_map(rows, lat, lon)
+    with list_col:
+        for r in rows:
+            _render_station_card(r)
 
-    with table_col:
-        df_display = df.sort_values(["fuel_type", "price_pence"])
-        for fuel in sorted(df_display["fuel_type"].unique()):
-            fuel_df = df_display[df_display["fuel_type"] == fuel][
-                ["trading_name", "price_pence", "postcode",
-                 "is_motorway_service_station", "is_supermarket_service_station"]
-            ].rename(columns={
-                "trading_name": "Station",
-                "price_pence": "Price (p)",
-                "postcode": "Postcode",
-                "is_motorway_service_station": "Motorway",
-                "is_supermarket_service_station": "Supermarket",
-            })
-            lo = float(fuel_df["Price (p)"].min())
-            hi = float(fuel_df["Price (p)"].max())
-            st.markdown(f"**{_FUEL_LABELS.get(fuel, fuel)}**")
-            st.dataframe(
-                fuel_df,
-                width="stretch",
-                hide_index=True,
-                column_config={
-                    "Price (p)": st.column_config.ProgressColumn(
-                        "Price (p)", format="%.1fp",
-                        min_value=lo - 1, max_value=hi,
-                    ),
-                },
-            )
+
+def _render_search_map(rows: list[dict], lat: float, lon: float) -> None:
+    df = pd.DataFrame(rows)
+    p_mean = df["price"].mean()
+    p_std = df["price"].std() or 1.0
+    df["color"] = df["price"].apply(lambda p: price_colour(p, p_mean, p_std))
+    df["rank_label"] = df["rank"].astype(str)
+    df["price_label"] = df["price"].apply(lambda p: f"{p:.1f}p")
+
+    pins = pdk.Layer(
+        "ScatterplotLayer",
+        data=df,
+        get_position=["longitude", "latitude"],
+        get_fill_color="color",
+        get_radius=320,
+        pickable=True,
+    )
+    labels = pdk.Layer(
+        "TextLayer",
+        data=df,
+        get_position=["longitude", "latitude"],
+        get_text="rank_label",
+        get_size=14,
+        get_color=[255, 255, 255],
+        get_alignment_baseline="'center'",
+    )
+    st.pydeck_chart(pdk.Deck(
+        layers=[pins, labels],
+        initial_view_state=pdk.ViewState(latitude=lat, longitude=lon,
+                                          zoom=11, pitch=0),
+        tooltip={"text": "#{rank_label} {trading_name}\n{price_label}"},
+        map_style=_MAP_STYLE,
+    ))
+
+
+def _render_station_card(r: dict) -> None:
+    name = pretty_name(r["trading_name"])
+    brand = pretty_name(r.get("brand_name"))
+    tags = []
+    if r.get("is_motorway_service_station"):
+        tags.append("🛣️ Motorway")
+    if r.get("is_supermarket_service_station"):
+        tags.append("🛒 Supermarket")
+    meta = f"{r['distance_miles']:.1f} mi · {r.get('postcode') or ''}".strip(" ·")
+    if brand and brand.lower() not in name.lower():
+        meta = f"{brand} · {meta}"
+    maps_url = (
+        "https://www.google.com/maps/dir/?api=1&destination="
+        f"{r['latitude']},{r['longitude']}"
+    )
+    with st.container(border=True):
+        info_col, price_col = st.columns([3, 1])
+        with info_col:
+            badge = "🏆 " if r["rank"] == 1 else f"{r['rank']}. "
+            st.markdown(f"**{badge}{name}**")
+            st.caption(meta + ("  ·  " + " · ".join(tags) if tags else ""))
+            st.markdown(f"[Directions →]({maps_url})")
+        with price_col:
+            st.markdown(f"### {r['price']:.1f}p")
 
 
 _GLOBAL_CSS = """
