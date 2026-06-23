@@ -326,31 +326,42 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
     st.caption("Enter a postcode or address to find the cheapest stations nearby")
 
     geo_ok = _geo_allowed()
-    if geo_ok:
-        input_col, geo_col, radius_col = st.columns([3, 1, 1])
-    else:
-        input_col, radius_col = st.columns([4, 1])
 
-    with input_col:
-        address = st.text_input(
-            "Postcode or address",
-            placeholder="e.g. LS11 or Leeds city centre",
-            label_visibility="collapsed",
-        )
+    with st.form("search_form"):
+        if geo_ok:
+            input_col, geo_col, radius_col, btn_col = st.columns([3, 1, 1, 1])
+        else:
+            input_col, radius_col, btn_col = st.columns([4, 1, 1])
 
-    geo = None
-    if geo_ok:
-        with geo_col:
-            geo = streamlit_geolocation()
-    else:
+        with input_col:
+            address = st.text_input(
+                "Postcode or address",
+                placeholder="e.g. LS11 or Leeds city centre",
+                label_visibility="collapsed",
+            )
+
+        if geo_ok:
+            with geo_col:
+                geo = streamlit_geolocation()
+        else:
+            geo = None
+
+        with radius_col:
+            radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
+
+        with btn_col:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+            submitted = st.form_submit_button("Search", use_container_width=True)
+
+    if not geo_ok:
         st.caption(
-            "ℹ️ 'Near me' requires HTTPS — enter a postcode above instead.",
-            help="Browsers block geolocation on plain HTTP (non-localhost). "
-                 "Access via https:// or localhost to enable it.",
+            "⚠️ Geolocation requires HTTPS — enter a postcode above instead.",
+            help="Browsers block geolocation on plain HTTP. "
+                 "Access via https:// or localhost to enable the 'Near me' button.",
         )
 
-    with radius_col:
-        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
+    if not submitted and not (geo and geo.get("latitude")):
+        return
 
     # Geolocation takes priority over typed address when available
     geo_lat = geo.get("latitude") if geo else None
