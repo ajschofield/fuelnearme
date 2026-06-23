@@ -563,14 +563,12 @@ def _page_overview() -> None:
 
 def _page_search() -> None:
     engine = get_engine()
-    _header(engine)
     fuel_type = _fuel_selector()
     render_search(engine, fuel_type)
 
 
 def _page_map() -> None:
     engine = get_engine()
-    _header(engine)
     fuel_type = _fuel_selector()
 
     try:
@@ -594,7 +592,6 @@ def _page_map() -> None:
 
 def _page_trends() -> None:
     engine = get_engine()
-    _header(engine)
     fuel_type = _fuel_selector()
 
     try:
