@@ -148,7 +148,7 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     if pd.isna(std) or std == 0:
         std = 1.0
 
-    view = pdk.ViewState(latitude=54.2, longitude=-2.4, zoom=5.1)
+    view = pdk.ViewState(latitude=54.5, longitude=-2.8, zoom=5.8)
 
     if view_mode == "Points":
         df["color"] = df["price_pence"].apply(lambda p: price_colour(p, mean, std))
