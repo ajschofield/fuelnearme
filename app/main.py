@@ -426,10 +426,15 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
             )
 
 
-_MOBILE_CSS = """
+_GLOBAL_CSS = """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html, body, [class*="css"], button, input, textarea, select {
+    font-family: 'Inter', sans-serif !important;
+}
+
 @media (max-width: 768px) {
-    /* Stack all multi-column layouts vertically on mobile */
     [data-testid="stHorizontalBlock"] {
         flex-direction: column !important;
     }
@@ -438,7 +443,6 @@ _MOBILE_CSS = """
         flex: none !important;
         min-width: 100% !important;
     }
-    /* Prevent the wide-layout gutter from eating screen space */
     .main .block-container {
         padding-left: 1rem !important;
         padding-right: 1rem !important;
@@ -450,7 +454,7 @@ _MOBILE_CSS = """
 
 
 def main() -> None:
-    st.markdown(_MOBILE_CSS, unsafe_allow_html=True)
+    st.markdown(_GLOBAL_CSS, unsafe_allow_html=True)
     engine = get_engine()
 
     try:
