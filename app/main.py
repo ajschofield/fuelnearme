@@ -191,9 +191,20 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
         )
 
     st.pydeck_chart(deck)
-    st.caption(
-        f"Cheaper → green · pricier → red · national average "
-        f"{mean:.1f}p · {len(df):,} stations"
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <span style="font-size:12px;">Cheaper</span>
+          <div style="width:160px;height:10px;border-radius:5px;
+            background:linear-gradient(to right,#1a9850,#91cf60,#d9ef8b,#fee08b,#fc8d59,#d73027);">
+          </div>
+          <span style="font-size:12px;">Pricier</span>
+          <span style="font-size:12px;color:gray;">
+            · national avg {mean:.1f}p · {len(df):,} stations
+          </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
