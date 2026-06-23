@@ -124,11 +124,15 @@ def render_metrics(stats: dict) -> None:
         f"{float(cheapest['price_pence']):.1f}p",
         help=cheapest_where or None,
     )
-    c3.metric("Stations", f"{stats['count']:,}")
+    c3.metric("Stations", f"{stats['count']:,}",
+              help="Number of stations reporting prices for this fuel type")
     c4.metric(
         "Spread",
         f"{stats['spread_pence']:.1f}p",
-        help=f"{stats['min_pence']:.1f}p to {stats['max_pence']:.1f}p across stations",
+        help=(
+            f"Price range per litre: {stats['min_pence']:.1f}p (cheapest) "
+            f"to {stats['max_pence']:.1f}p (dearest) across all stations"
+        ),
     )
 
 
