@@ -102,7 +102,7 @@ def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
             col.metric(label, "—")
             continue
         delta = deltas.get(key) if deltas else None
-        delta_str = f"{delta:+.1f}p" if delta is not None else None
+        delta_str = f"{delta:+.1f}p" if delta else None
         col.metric(
             label,
             f"{float(data['avg_pence']):.1f}p",
