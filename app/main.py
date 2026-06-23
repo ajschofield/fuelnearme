@@ -559,6 +559,8 @@ def _page_overview() -> None:
     stats = summary_stats(prices)
     if stats:
         render_metrics(stats)
+    if prices:
+        render_brands(prices)
 
 
 def _page_search() -> None:
