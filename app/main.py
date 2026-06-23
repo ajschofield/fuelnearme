@@ -601,10 +601,9 @@ def _page_map() -> None:
 
     view_mode = (
         st.segmented_control(
-            "Map view",
+            "Map style",
             options=["Heatmap", "Points"],
             default="Heatmap",
-            label_visibility="collapsed",
         )
         or "Heatmap"
     )
