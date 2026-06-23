@@ -521,7 +521,16 @@ def main() -> None:
         trend = get_price_trend(engine, fuel_type=fuel_type)
     except Exception:
         trend = []
-    render_trend(trend)
+    try:
+        best_days_data = get_best_days(engine, fuel_type=fuel_type)
+    except Exception:
+        best_days_data = {"rows": [], "days_available": 0}
+
+    col_trend, col_best = st.columns([3, 2])
+    with col_trend:
+        render_trend(trend)
+    with col_best:
+        render_best_days(best_days_data)
 
     col_left, col_right = st.columns([3, 2])
     with col_left:
@@ -532,12 +541,6 @@ def main() -> None:
         except Exception:
             region_rows = []
         render_regions(region_rows)
-
-    try:
-        best_days_data = get_best_days(engine, fuel_type=fuel_type)
-    except Exception:
-        best_days_data = {"rows": [], "days_available": 0}
-    render_best_days(best_days_data)
 
 
 if __name__ == "__main__":
