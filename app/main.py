@@ -317,13 +317,8 @@ def render_best_days(data: dict, fuel_label: str = "") -> None:
     df["avg_pence"] = df["avg_pence"].astype(float)
     best = df.loc[df["avg_pence"].idxmin(), "day_name"]
     st.caption(f"Historically cheapest day: **{best}**")
-    st.dataframe(
-        df[["day_name", "avg_pence"]].rename(
-            columns={"day_name": "Day", "avg_pence": "Avg price (p)"}
-        ),
-        hide_index=True,
-        width="stretch",
-    )
+    st.altair_chart(_price_bar_chart(df, "day_name", "avg_pence"),
+                    use_container_width=True)
 
 
 def render_brands(prices: list[dict]) -> None:
