@@ -229,24 +229,28 @@ def _price_bar_chart(df: pd.DataFrame, cat_col: str, val_col: str) -> alt.Chart:
     df[val_col] = df[val_col].astype(float)
     lo, hi = df[val_col].min(), df[val_col].max()
     pad = max(1.0, (hi - lo) * 0.1)
-    base = alt.Chart(df).encode(
-        y=alt.Y(f"{cat_col}:N", sort="x", title=None),
-        x=alt.X(
-            f"{val_col}:Q", title="Avg price (p/l)",
-            scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
-            axis=alt.Axis(format=".0f"),
-        ),
+    x = alt.X(
+        f"{val_col}:Q", title="Avg price (p/l)",
+        scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
+        axis=alt.Axis(format=".0f"),
     )
-    bars = base.mark_bar(color="#e63946")
-    labels = base.mark_text(align="left", dx=4, fontSize=12).encode(
+    y = alt.Y(f"{cat_col}:N", sort="x", title=None, axis=None)
+    base = alt.Chart(df).encode(x=x, y=y)
+    bars = base.mark_bar(color="#e63946", cornerRadiusTopRight=3,
+                         cornerRadiusBottomRight=3)
+    # category label inside the left edge of each bar
+    cat_labels = base.mark_text(
+        align="left", baseline="middle", dx=6, fontSize=12, color="white",
+    ).encode(text=alt.Text(f"{cat_col}:N"))
+    # price value just past the right edge
+    val_labels = base.mark_text(
+        align="left", baseline="middle", dx=4, fontSize=12,
+    ).encode(
+        x=alt.X(f"{val_col}:Q",
+                scale=alt.Scale(domain=[lo - pad, hi + pad * 3])),
         text=alt.Text(f"{val_col}:Q", format=".1f"),
     )
-    return (
-        (bars + labels)
-        .properties(height=alt.Step(28))
-        .configure_axisY(labelLimit=200, labelFontSize=12)
-        .configure_axisX(titlePadding=12)
-    )
+    return (bars + cat_labels + val_labels).properties(height=alt.Step(30))
 
 
 def render_regions(rows: list[dict], fuel_label: str = "") -> None:
