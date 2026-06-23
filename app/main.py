@@ -23,11 +23,11 @@ from app.db import (
 from app.metrics import brand_averages, summary_stats
 
 _FUEL_LABELS = {
-    "E10": "E10 (Petrol)",
-    "E5": "E5 (Super Petrol)",
-    "B7_STANDARD": "B7 Standard (Diesel)",
-    "B7_PREMIUM": "B7 Premium (Diesel)",
-    "B10": "B10 (Biodiesel)",
+    "E10": "E10",
+    "E5": "E5 Super",
+    "B7_STANDARD": "B7 Standard",
+    "B7_PREMIUM": "B7 Premium",
+    "B10": "B10",
     "HVO": "HVO",
 }
 
@@ -527,7 +527,7 @@ def _fuel_selector() -> str:
             options=list(_FUEL_LABELS.keys()),
             format_func=lambda k: _FUEL_LABELS[k],
             default="E10",
-            label_visibility="collapsed",
+            key="fuel_type",
         )
         or "E10"
     )
