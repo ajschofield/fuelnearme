@@ -22,8 +22,6 @@ from app.db import (
 )
 from app.metrics import brand_averages, summary_stats
 
-st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
-
 _FUEL_LABELS = {
     "E10": "E10 (Petrol)",
     "E5": "E5 (Super Petrol)",
@@ -453,15 +451,12 @@ html, body, [class*="css"], button, input, textarea, select {
 """
 
 
-def main() -> None:
-    st.markdown(_GLOBAL_CSS, unsafe_allow_html=True)
-    engine = get_engine()
-
+def _header(engine: sql.Engine) -> None:
+    """Title + last-updated badge, shared across all pages."""
     try:
         last_updated = get_last_updated(engine)
     except Exception:
         last_updated = None
-
     title_col, badge_col = st.columns([5, 1])
     with title_col:
         st.title("⛽ FuelNearMe")
@@ -469,6 +464,24 @@ def main() -> None:
     with badge_col:
         if last_updated:
             st.metric("Updated", _time_ago(last_updated))
+
+
+def _fuel_selector() -> str:
+    return (
+        st.segmented_control(
+            "Fuel type",
+            options=list(_FUEL_LABELS.keys()),
+            format_func=lambda k: _FUEL_LABELS[k],
+            default="E10",
+            label_visibility="collapsed",
+        )
+        or "E10"
+    )
+
+
+def _page_overview() -> None:
+    engine = get_engine()
+    _header(engine)
 
     try:
         fuel_overview = get_all_fuel_averages(engine)
@@ -480,16 +493,7 @@ def main() -> None:
         render_fuel_overview(fuel_overview, fuel_deltas)
         st.divider()
 
-    fuel_type = (
-        st.segmented_control(
-            "Fuel type",
-            options=list(_FUEL_LABELS.keys()),
-            format_func=lambda k: _FUEL_LABELS[k],
-            default="E10",
-            label_visibility="collapsed",
-        )
-        or "E10"
-    )
+    fuel_type = _fuel_selector()
 
     try:
         with st.spinner("Loading prices..."):
@@ -502,9 +506,25 @@ def main() -> None:
     if stats:
         render_metrics(stats)
 
+
+def _page_search() -> None:
+    engine = get_engine()
+    _header(engine)
+    fuel_type = _fuel_selector()
     render_search(engine, fuel_type)
 
-    st.divider()
+
+def _page_map() -> None:
+    engine = get_engine()
+    _header(engine)
+    fuel_type = _fuel_selector()
+
+    try:
+        with st.spinner("Loading prices..."):
+            prices = get_latest_prices(engine, fuel_type=fuel_type)
+    except Exception:
+        st.warning("Price data not yet available — the pipeline may still be loading.")
+        prices = []
 
     view_mode = (
         st.segmented_control(
@@ -516,6 +536,19 @@ def main() -> None:
         or "Heatmap"
     )
     render_map(prices, view_mode)
+
+
+def _page_trends() -> None:
+    engine = get_engine()
+    _header(engine)
+    fuel_type = _fuel_selector()
+
+    try:
+        with st.spinner("Loading prices..."):
+            prices = get_latest_prices(engine, fuel_type=fuel_type)
+    except Exception:
+        st.warning("Price data not yet available — the pipeline may still be loading.")
+        prices = []
 
     try:
         trend = get_price_trend(engine, fuel_type=fuel_type)
@@ -541,6 +574,19 @@ def main() -> None:
         except Exception:
             region_rows = []
         render_regions(region_rows)
+
+
+def main() -> None:
+    st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
+    st.markdown(_GLOBAL_CSS, unsafe_allow_html=True)
+
+    pg = st.navigation([
+        st.Page(_page_overview, title="Overview", icon="📊", default=True),
+        st.Page(_page_search, title="Search", icon="🔍"),
+        st.Page(_page_map, title="Map", icon="🗺️"),
+        st.Page(_page_trends, title="Trends", icon="📈"),
+    ])
+    pg.run()
 
 
 if __name__ == "__main__":
