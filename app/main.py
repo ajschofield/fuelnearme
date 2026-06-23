@@ -416,7 +416,7 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
     st.caption(
         f"{len(rows)} cheapest **{_FUEL_LABELS[fuel_type]}** "
         f"station{'s' if len(rows) != 1 else ''} within {radius} miles · "
-        "nearest prices first by value"
+        "cheapest first"
     )
 
     map_col, list_col = st.columns([2, 3])
