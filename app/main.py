@@ -208,11 +208,14 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     )
 
 
-def render_regions(rows: list[dict]) -> None:
+def render_regions(rows: list[dict], fuel_label: str = "") -> None:
     if not rows:
         return
     st.subheader("Prices by region")
-    st.caption("Average price per county · click a column header to sort")
+    caption = "Average price per county · click a column header to sort"
+    if fuel_label:
+        caption += f" · {fuel_label}"
+    st.caption(caption)
     df = pd.DataFrame(rows)
     df["avg_pence"] = df["avg_pence"].astype(float)
     lo, hi = df["avg_pence"].min(), df["avg_pence"].max()
@@ -270,9 +273,12 @@ def render_trend(rows: list[dict]) -> None:
     st.altair_chart(chart, use_container_width=True)
 
 
-def render_best_days(data: dict) -> None:
+def render_best_days(data: dict, fuel_label: str = "") -> None:
     st.subheader("Best days to buy")
-    st.caption("Day-of-week price patterns based on historical data")
+    caption = "Day-of-week price patterns based on historical data"
+    if fuel_label:
+        caption += f" · {fuel_label}"
+    st.caption(caption)
     days_available = data.get("days_available", 0)
     if days_available < _MIN_DAYS_BEST:
         remaining = _MIN_DAYS_BEST - days_available
@@ -643,11 +649,12 @@ def _page_trends() -> None:
     except Exception:
         best_days_data = {"rows": [], "days_available": 0}
 
+    fuel_label = _FUEL_LABELS[fuel_type]
     col_trend, col_best = st.columns([3, 2])
     with col_trend:
         render_trend(trend)
     with col_best:
-        render_best_days(best_days_data)
+        render_best_days(best_days_data, fuel_label=fuel_label)
 
     col_left, col_right = st.columns([3, 2])
     with col_left:
@@ -657,7 +664,7 @@ def _page_trends() -> None:
             region_rows = get_all_regions(engine, fuel_type=fuel_type)
         except Exception:
             region_rows = []
-        render_regions(region_rows)
+        render_regions(region_rows, fuel_label=fuel_label)
 
 
 def main() -> None:
