@@ -363,50 +363,50 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
 
     geo_ok = _geo_allowed()
 
-    # Geolocation widget must live outside st.form (components can't be inside one)
-    geo = streamlit_geolocation() if geo_ok else None
-
-    if not geo_ok:
-        st.caption(
-            "⚠️ Geolocation requires HTTPS — enter a postcode above instead.",
-            help="Browsers block geolocation on plain HTTP. "
-                 "Access via https:// or localhost to enable the 'Near me' button.",
+    input_col, locate_col = st.columns([6, 1], vertical_alignment="bottom")
+    with input_col:
+        address = st.text_input(
+            "Postcode or address",
+            placeholder="e.g. LS11 or Leeds city centre",
+            label_visibility="collapsed",
         )
+    with locate_col:
+        # Custom components can't live in st.form, so the form is built manually.
+        if geo_ok:
+            geo = streamlit_geolocation()
+        else:
+            geo = None
+            st.button("📍", disabled=True, key="locate_disabled",
+                      help="Unavailable on an insecure connection — "
+                           "enter a postcode instead.")
 
-    with st.form("search_form"):
-        input_col, radius_col, btn_col = st.columns([4, 1, 1])
+    with st.expander("Search radius"):
+        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5,
+                           key="search_radius")
 
-        with input_col:
-            address = st.text_input(
-                "Postcode or address",
-                placeholder="e.g. LS11 or Leeds city centre",
-                label_visibility="collapsed",
-            )
+    submitted = st.button("Search", type="primary", use_container_width=True)
 
-        with radius_col:
-            radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
-
-        with btn_col:
-            st.markdown("&nbsp;", unsafe_allow_html=True)
-            submitted = st.form_submit_button("Search", use_container_width=True)
-
-    if not submitted and not (geo and geo.get("latitude")):
-        return
-
-    # Geolocation takes priority over typed address when available
+    # Resolve a search origin: geolocation fires on its own; the Search button
+    # geocodes the typed address. Persist it so results survive unrelated reruns.
     geo_lat = geo.get("latitude") if geo else None
     geo_lon = geo.get("longitude") if geo else None
     if geo_lat and geo_lon:
-        lat, lon = float(geo_lat), float(geo_lon)
-    elif address:
+        st.session_state["search_origin"] = (float(geo_lat), float(geo_lon))
+    elif submitted and address:
         with st.spinner("Locating..."):
             coords = geocode(address)
         if coords is None:
             st.error("Could not find that location. Try a postcode or town name.")
             return
-        lat, lon = coords
-    else:
+        st.session_state["search_origin"] = coords
+    elif submitted:
+        st.warning("Enter a postcode or address to search.")
         return
+
+    origin = st.session_state.get("search_origin")
+    if not origin:
+        return
+    lat, lon = origin
     rows = get_nearby_stations(engine, lat, lon, radius_miles=radius,
                                fuel_type=fuel_type)
 
