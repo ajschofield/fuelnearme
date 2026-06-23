@@ -351,11 +351,18 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
 
     geo_ok = _geo_allowed()
 
+    # Geolocation widget must live outside st.form (custom components can't be inside one)
+    geo = streamlit_geolocation() if geo_ok else None
+
+    if not geo_ok:
+        st.caption(
+            "⚠️ Geolocation requires HTTPS — enter a postcode above instead.",
+            help="Browsers block geolocation on plain HTTP. "
+                 "Access via https:// or localhost to enable the 'Near me' button.",
+        )
+
     with st.form("search_form"):
-        if geo_ok:
-            input_col, geo_col, radius_col, btn_col = st.columns([3, 1, 1, 1])
-        else:
-            input_col, radius_col, btn_col = st.columns([4, 1, 1])
+        input_col, radius_col, btn_col = st.columns([4, 1, 1])
 
         with input_col:
             address = st.text_input(
@@ -364,25 +371,12 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
                 label_visibility="collapsed",
             )
 
-        if geo_ok:
-            with geo_col:
-                geo = streamlit_geolocation()
-        else:
-            geo = None
-
         with radius_col:
             radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
 
         with btn_col:
             st.markdown("&nbsp;", unsafe_allow_html=True)
             submitted = st.form_submit_button("Search", use_container_width=True)
-
-    if not geo_ok:
-        st.caption(
-            "⚠️ Geolocation requires HTTPS — enter a postcode above instead.",
-            help="Browsers block geolocation on plain HTTP. "
-                 "Access via https:// or localhost to enable the 'Near me' button.",
-        )
 
     if not submitted and not (geo and geo.get("latitude")):
         return
