@@ -511,7 +511,7 @@ def _header(engine: sql.Engine) -> None:
         last_updated = get_last_updated(engine)
     except Exception:
         last_updated = None
-    title_col, badge_col = st.columns([5, 1])
+    title_col, badge_col = st.columns([4, 2])
     with title_col:
         st.title("⛽ FuelNearMe")
         st.caption("Live UK fuel prices — find the cheapest forecourt near you.")
