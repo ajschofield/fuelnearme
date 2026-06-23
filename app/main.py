@@ -102,12 +102,20 @@ def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
             col.metric(label, "—")
             continue
         delta = deltas.get(key) if deltas else None
-        delta_str = f"{delta:+.1f}p" if delta else None
+        if delta:
+            delta_str = f"{delta:+.1f}p"
+            delta_color = "inverse"
+        elif delta is not None:
+            delta_str = "no change"
+            delta_color = "off"
+        else:
+            delta_str = None
+            delta_color = "off"
         col.metric(
             label,
             f"{float(data['avg_pence']):.1f}p",
             delta=delta_str,
-            delta_color="inverse",
+            delta_color=delta_color,
             help=f"{data['stations']:,} stations",
         )
 
