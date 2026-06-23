@@ -123,11 +123,13 @@ def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
         )
 
 
-def render_metrics(stats: dict) -> None:
+def render_metrics(stats: dict, fuel_label: str = "") -> None:
     cheapest = stats["cheapest"]
     cheapest_where = " · ".join(
         part for part in (cheapest.get("trading_name"), cheapest.get("city")) if part
     )
+    if fuel_label:
+        st.markdown(f"**{fuel_label}** — selected fuel")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("National average", f"{stats['mean_pence']:.1f}p")
     c2.metric(
@@ -138,11 +140,11 @@ def render_metrics(stats: dict) -> None:
     c3.metric("Stations", f"{stats['count']:,}",
               help="Number of stations reporting prices for this fuel type")
     c4.metric(
-        "Spread",
-        f"{stats['spread_pence']:.1f}p",
+        "Cheapest–dearest",
+        f"{stats['min_pence']:.1f}–{stats['max_pence']:.1f}p",
         help=(
-            f"Price range per litre: {stats['min_pence']:.1f}p (cheapest) "
-            f"to {stats['max_pence']:.1f}p (dearest) across all stations"
+            f"Gap of {stats['spread_pence']:.1f}p per litre between the cheapest "
+            "and dearest station nationally"
         ),
     )
 
@@ -565,7 +567,7 @@ def _page_overview() -> None:
 
     stats = summary_stats(prices)
     if stats:
-        render_metrics(stats)
+        render_metrics(stats, fuel_label=_FUEL_LABELS[fuel_type])
     if prices:
         render_brands(prices)
 
