@@ -350,8 +350,7 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
         )
 
     with radius_col:
-        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5,
-                           label_visibility="collapsed")
+        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5)
 
     # Geolocation takes priority over typed address when available
     geo_lat = geo.get("latitude") if geo else None
