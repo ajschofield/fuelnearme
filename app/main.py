@@ -424,6 +424,60 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
             )
 
 
+_LIGHT_OVERRIDES = """
+    .stApp, [data-testid="stAppViewContainer"] {
+        background-color: #f8f9fa !important;
+    }
+    [data-testid="stHeader"] {
+        background-color: #f8f9fa !important;
+        border-bottom: 1px solid #dee2e6 !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+        border-right: 1px solid #dee2e6 !important;
+    }
+    [data-testid="stSidebarNav"] a span,
+    [data-testid="stSidebarNavItems"] a span {
+        color: #212529 !important;
+    }
+    .stMarkdown p, .stMarkdown li, .stMarkdown span,
+    [data-testid="stCaptionContainer"] p,
+    [data-testid="stMetricLabel"] p,
+    [data-testid="stMetricValue"],
+    [data-testid="stText"],
+    label, .stSelectbox label, .stSlider label,
+    h1, h2, h3, h4, h5 {
+        color: #212529 !important;
+    }
+    [data-testid="stMetricDeltaIcon"], [data-testid="stMetricDelta"] {
+        color: inherit !important;
+    }
+    .stAlert, [data-testid="stInfo"] {
+        background-color: #e3f2fd !important;
+        color: #0c4a6e !important;
+    }
+    [data-testid="stDataFrameContainer"] > div {
+        background-color: #ffffff !important;
+    }
+    input, textarea {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        border-color: #ced4da !important;
+    }
+    [data-testid="stSegmentedControl"] button {
+        color: #212529 !important;
+    }
+"""
+
+_AUTO_THEME = (
+    f"<style>@media (prefers-color-scheme: light) {{ {_LIGHT_OVERRIDES} }}</style>"
+)
+_THEME_CSS = {
+    "Auto": _AUTO_THEME,
+    "Light": f"<style>{_LIGHT_OVERRIDES}</style>",
+    "Dark": "",
+}
+
 _GLOBAL_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -579,6 +633,17 @@ def _page_trends() -> None:
 def main() -> None:
     st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
     st.markdown(_GLOBAL_CSS, unsafe_allow_html=True)
+
+    with st.sidebar:
+        theme = st.radio(
+            "Theme",
+            options=["Auto", "Light", "Dark"],
+            index=0,
+            horizontal=True,
+            help="Auto follows your system setting",
+        )
+    if css := _THEME_CSS.get(theme, ""):
+        st.markdown(css, unsafe_allow_html=True)
 
     pg = st.navigation([
         st.Page(_page_overview, title="Overview", icon="📊", default=True),
