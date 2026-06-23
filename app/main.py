@@ -86,10 +86,10 @@ def price_colour(price: float, mean: float, std: float) -> list[int]:
 
 
 _FUEL_OVERVIEW = [
-    ("E10", "E10"),
-    ("E5", "E5 Super"),
-    ("B7_STANDARD", "Diesel"),
-    ("B7_PREMIUM", "Premium"),
+    ("E10", _FUEL_LABELS["E10"]),
+    ("E5", _FUEL_LABELS["E5"]),
+    ("B7_STANDARD", _FUEL_LABELS["B7_STANDARD"]),
+    ("B7_PREMIUM", _FUEL_LABELS["B7_PREMIUM"]),
 ]
 
 
