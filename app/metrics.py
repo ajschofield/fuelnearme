@@ -10,6 +10,23 @@ from __future__ import annotations
 from statistics import mean
 
 
+def pretty_name(name: str | None) -> str:
+    """Humanise a SHOUTING raw station/brand string.
+
+    Title-cases each word but leaves short all-caps tokens (BP, MFG, HVO, JET)
+    intact, since those are acronyms rather than shouting.
+    """
+    if not name:
+        return ""
+    words = []
+    for word in name.split():
+        if word.isupper() and word.isalpha() and len(word) <= 3:
+            words.append(word)
+        else:
+            words.append(word.capitalize())
+    return " ".join(words)
+
+
 def summary_stats(prices: list[dict]) -> dict | None:
     """Headline figures for the selected fuel: average, cheapest, spread.
 
@@ -46,7 +63,7 @@ def brand_averages(
         brand = p.get("brand_name")
         if not brand:
             continue
-        brand = brand.strip().title()
+        brand = pretty_name(brand.strip())
         groups.setdefault(brand, []).append(float(p["price_pence"]))
 
     rows = [

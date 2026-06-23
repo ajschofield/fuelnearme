@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.metrics import brand_averages, summary_stats
+from app.metrics import brand_averages, pretty_name, summary_stats
 
 
 def _price(node_id, price_pence, brand=None):
@@ -39,6 +39,27 @@ def test_summary_stats_handles_decimal_prices():
     prices = [_price("a", Decimal("130.5")), _price("b", Decimal("131.5"))]
     stats = summary_stats(prices)
     assert stats["mean_pence"] == 131.0
+
+
+def test_pretty_name_humanises_shouting_names():
+    assert pretty_name("MFG MORRISONS BRADFORD") == "MFG Morrisons Bradford"
+    assert pretty_name("shell") == "Shell"
+    assert pretty_name("BP") == "BP"
+    assert pretty_name("Circle K") == "Circle K"
+    assert pretty_name(None) == ""
+    assert pretty_name("RONTEC OTLEY ROAD") == "Rontec Otley Road"
+
+
+def test_brand_averages_merges_case_variants():
+    prices = [
+        _price("a", 146.0, brand="CIRCLE K"),
+        _price("b", 148.0, brand="Circle K"),
+        _price("c", 147.0, brand="circle k"),
+    ]
+    rows = brand_averages(prices, min_stations=3)
+    assert len(rows) == 1
+    assert rows[0]["brand"] == "Circle K"
+    assert rows[0]["stations"] == 3
 
 
 def test_brand_averages_groups_and_sorts_cheapest_first():
