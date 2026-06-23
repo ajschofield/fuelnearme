@@ -311,7 +311,7 @@ def render_brands(prices: list[dict]) -> None:
     st.dataframe(
         df,
         hide_index=True,
-        width="stretch",
+        use_container_width=True,
         column_config={
             "Avg price": st.column_config.ProgressColumn(
                 "Avg price",
