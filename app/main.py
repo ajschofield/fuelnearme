@@ -227,6 +227,7 @@ def render_regions(rows: list[dict]) -> None:
             "Avg price (p)": st.column_config.ProgressColumn(
                 "Avg price (p)", format="%.1fp",
                 min_value=float(lo) - 1, max_value=float(hi),
+                width="medium",
             ),
         },
     )
