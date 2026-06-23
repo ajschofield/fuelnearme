@@ -316,7 +316,12 @@ def _geo_allowed() -> bool:
     try:
         headers = st.context.headers
         host = headers.get("host", "")
-        return host.startswith("localhost") or host.startswith("127.")
+        proto = headers.get("x-forwarded-proto", headers.get("x-scheme", ""))
+        return (
+            host.startswith("localhost")
+            or host.startswith("127.")
+            or proto == "https"
+        )
     except Exception:
         return False
 
