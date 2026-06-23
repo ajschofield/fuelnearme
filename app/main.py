@@ -44,6 +44,7 @@ _HEATMAP_COLORS = [
 _MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
 _MAX_SEARCH_RESULTS = 20
+_MAX_REGIONS = 15
 
 
 def _time_ago(iso: str) -> str:
@@ -220,32 +221,42 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
     )
 
 
+def _price_bar_chart(df: pd.DataFrame, cat_col: str, val_col: str) -> alt.Chart:
+    """Horizontal bar chart of prices, value printed at each bar's end.
+
+    The x-axis starts just below the cheapest value so closely-clustered prices
+    are still visually distinguishable; the printed labels keep it honest.
+    """
+    df = df.copy()
+    df[val_col] = df[val_col].astype(float)
+    lo, hi = df[val_col].min(), df[val_col].max()
+    pad = max(1.0, (hi - lo) * 0.1)
+    base = alt.Chart(df).encode(
+        y=alt.Y(f"{cat_col}:N", sort="x", title=None,
+                axis=alt.Axis(labelLimit=220)),
+        x=alt.X(f"{val_col}:Q", title="Avg price (p)",
+                scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
+                axis=alt.Axis(format=".0f")),
+    )
+    bars = base.mark_bar(color="#e63946")
+    labels = base.mark_text(align="left", dx=4, fontSize=12).encode(
+        text=alt.Text(f"{val_col}:Q", format=".1f"),
+    )
+    return (bars + labels).properties(height=alt.Step(28))
+
+
 def render_regions(rows: list[dict], fuel_label: str = "") -> None:
     if not rows:
         return
     st.subheader("Prices by region")
-    caption = "Average price per county · click a column header to sort"
+    shown = rows[:_MAX_REGIONS]
+    caption = f"{len(shown)} cheapest counties"
     if fuel_label:
         caption += f" · {fuel_label}"
     st.caption(caption)
-    df = pd.DataFrame(rows)
-    df["avg_pence"] = df["avg_pence"].astype(float)
-    lo, hi = df["avg_pence"].min(), df["avg_pence"].max()
-    df = df.rename(columns={
-        "county": "County", "avg_pence": "Avg price (p)", "stations": "Stations"
-    })
-    st.dataframe(
-        df,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Avg price (p)": st.column_config.ProgressColumn(
-                "Avg price (p)", format="%.1fp",
-                min_value=float(lo) - 1, max_value=float(hi),
-                width="medium",
-            ),
-        },
-    )
+    df = pd.DataFrame(shown)
+    st.altair_chart(_price_bar_chart(df, "county", "avg_pence"),
+                    use_container_width=True)
 
 
 _MIN_DAYS_TREND = 2
@@ -319,27 +330,11 @@ def render_brands(prices: list[dict]) -> None:
     rows = brand_averages(prices)
     if len(rows) < 2:
         return
-
-    df = pd.DataFrame(rows).rename(
-        columns={"brand": "Brand", "avg_pence": "Avg price", "stations": "Stations"}
-    )
-    lo, hi = df["Avg price"].min(), df["Avg price"].max()
-
+    df = pd.DataFrame(rows)
     st.subheader("Average price by brand")
     st.caption("Brands with 10+ stations · cheapest first")
-    st.dataframe(
-        df,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Avg price": st.column_config.ProgressColumn(
-                "Avg price",
-                format="%.1fp",
-                min_value=float(lo) - 0.5,
-                max_value=float(hi),
-            ),
-        },
-    )
+    st.altair_chart(_price_bar_chart(df, "brand", "avg_pence"),
+                    use_container_width=True)
 
 
 def _geo_allowed() -> bool:
