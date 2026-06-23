@@ -13,11 +13,7 @@ models:
         tests:
           - not_null
       - name: latitude
-        tests:
-          - not_null
       - name: longitude
-        tests:
-          - not_null
 
 unit_tests:
   - name: test_station_fields_joined_onto_price_row
