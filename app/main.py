@@ -274,8 +274,8 @@ def render_best_days(data: dict) -> None:
     days_available = data.get("days_available", 0)
     if days_available < _MIN_DAYS_BEST:
         remaining = _MIN_DAYS_BEST - days_available
-        st.info(
-            f"Need {remaining} more day{'s' if remaining != 1 else ''} of data "
+        st.caption(
+            f"⏳ Need {remaining} more day{'s' if remaining != 1 else ''} of data "
             "to identify day-of-week price patterns."
         )
         return
