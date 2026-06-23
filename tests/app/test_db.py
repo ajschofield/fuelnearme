@@ -121,6 +121,29 @@ def test_get_nearby_stations_returns_all_fuel_types(app_engine):
     assert "E5" in fuel_types
 
 
+def test_get_nearby_stations_filters_by_fuel_type(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Leeds Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        _insert_price(conn, "abc123", "Leeds Station", "E5", 145.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        conn.commit()
+    result = get_nearby_stations(app_engine, LEEDS_LAT, LEEDS_LON,
+                                 radius_miles=10, fuel_type="E10")
+    fuel_types = {r["fuel_type"] for r in result}
+    assert fuel_types == {"E10"}
+
+
+def test_get_nearby_stations_annotates_distance(app_engine):
+    with app_engine.connect() as conn:
+        _insert_price(conn, "abc123", "Leeds Station", "E10", 132.9,
+                      LEEDS_LAT, LEEDS_LON, "LS1 1AA")
+        conn.commit()
+    result = get_nearby_stations(app_engine, LEEDS_LAT, LEEDS_LON, radius_miles=10)
+    assert "distance_miles" in result[0]
+    assert result[0]["distance_miles"] < 0.1  # same coordinates
+
+
 def _insert_county_prices(conn, county, prices, fuel_type="E10"):
     for i, price in enumerate(prices):
         _insert_price(conn, f"{county}-{i}", f"Station {i}", fuel_type, price,

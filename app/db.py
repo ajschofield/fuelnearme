@@ -160,33 +160,43 @@ def get_best_days(engine, fuel_type: str = "E10") -> dict:
 
 
 def get_nearby_stations(
-    engine, lat: float, lon: float, radius_miles: float = 5.0
+    engine, lat: float, lon: float, radius_miles: float = 5.0,
+    fuel_type: str | None = None,
 ) -> list[dict]:
+    """Stations within `radius_miles`, each annotated with `distance_miles`.
+
+    When `fuel_type` is given, only that fuel's prices are returned; otherwise
+    the latest price for every fuel type at each station is included.
+    """
     deg_lat = radius_miles / 69.0
     deg_lon = radius_miles / (69.0 * math.cos(math.radians(lat)))
 
     with engine.connect() as conn:
         result = conn.execute(sql.text("""
             SELECT DISTINCT ON (node_id, fuel_type)
-                node_id, trading_name, fuel_type, price_pence,
+                node_id, trading_name, brand_name, fuel_type, price_pence,
                 latitude, longitude, postcode, city,
                 is_motorway_service_station, is_supermarket_service_station
             FROM marts.fct_fuel_prices
             WHERE latitude  BETWEEN :min_lat AND :max_lat
               AND longitude BETWEEN :min_lon AND :max_lon
               AND price_pence BETWEEN 50 AND 400
+              AND (:fuel_type IS NULL OR fuel_type = :fuel_type)
             ORDER BY node_id, fuel_type, loaded_at DESC
         """), {
             "min_lat": lat - deg_lat, "max_lat": lat + deg_lat,
             "min_lon": lon - deg_lon, "max_lon": lon + deg_lon,
+            "fuel_type": fuel_type,
         })
         rows = [row._asdict() for row in result]
 
-    return [
-        r
-        for r in rows
-        if _haversine(lat, lon, r["latitude"], r["longitude"]) <= radius_miles
-    ]
+    nearby = []
+    for r in rows:
+        dist = _haversine(lat, lon, r["latitude"], r["longitude"])
+        if dist <= radius_miles:
+            r["distance_miles"] = dist
+            nearby.append(r)
+    return nearby
 
 
 def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
