@@ -106,7 +106,7 @@ _FUEL_OVERVIEW = [
 
 
 def render_fuel_overview(averages: dict, deltas: dict | None = None) -> None:
-    st.caption("National average pump price · arrow shows day-on-day change")
+    st.caption("National averages · arrows show day-on-day change")
     cols = st.columns(len(_FUEL_OVERVIEW))
     for col, (key, label) in zip(cols, _FUEL_OVERVIEW):
         data = averages.get(key)
@@ -138,7 +138,7 @@ def render_metrics(stats: dict, fuel_label: str = "") -> None:
         part for part in (cheapest.get("trading_name"), cheapest.get("city")) if part
     )
     if fuel_label:
-        st.markdown(f"**{fuel_label}** — selected fuel")
+        st.caption(fuel_label)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("National average", f"{stats['mean_pence']:.1f}p")
     c2.metric(
@@ -146,8 +146,11 @@ def render_metrics(stats: dict, fuel_label: str = "") -> None:
         f"{float(cheapest['price_pence']):.1f}p",
         help=cheapest_where or None,
     )
-    c3.metric("Stations", f"{stats['count']:,}",
-              help="Number of stations reporting prices for this fuel type")
+    c3.metric(
+        "Stations",
+        f"{stats['count']:,}",
+        help="Number of stations reporting prices for this fuel type",
+    )
     c4.metric(
         "Cheapest–dearest",
         f"{stats['min_pence']:.1f}–{stats['max_pence']:.1f}p",
@@ -213,9 +216,11 @@ def render_map(prices: list[dict], view_mode: str = "Heatmap") -> None:
         )
 
     st.pydeck_chart(deck)
-    grad = "linear-gradient(to right," + ",".join(
-        f"rgb({r},{g},{b})" for r, g, b in _HEATMAP_COLORS
-    ) + ")"
+    grad = (
+        "linear-gradient(to right,"
+        + ",".join(f"rgb({r},{g},{b})" for r, g, b in _HEATMAP_COLORS)
+        + ")"
+    )
     st.markdown(
         f"""
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
@@ -239,24 +244,32 @@ def _price_bar_chart(df: pd.DataFrame, cat_col: str, val_col: str) -> alt.Chart:
     lo, hi = df[val_col].min(), df[val_col].max()
     pad = max(1.0, (hi - lo) * 0.1)
     x = alt.X(
-        f"{val_col}:Q", title="Avg price (p/l)",
+        f"{val_col}:Q",
+        title="Avg price (p/l)",
         scale=alt.Scale(domain=[lo - pad, hi + pad * 3]),
         axis=alt.Axis(format=".0f"),
     )
     y = alt.Y(f"{cat_col}:N", sort="x", title=None, axis=None)
     base = alt.Chart(df).encode(x=x, y=y)
-    bars = base.mark_bar(color="#e63946", cornerRadiusTopRight=3,
-                         cornerRadiusBottomRight=3)
+    bars = base.mark_bar(
+        color="#e63946", cornerRadiusTopRight=3, cornerRadiusBottomRight=3
+    )
     # category label inside the left edge of each bar
     cat_labels = base.mark_text(
-        align="left", baseline="middle", dx=6, fontSize=12, color="white",
+        align="left",
+        baseline="middle",
+        dx=6,
+        fontSize=12,
+        color="white",
     ).encode(text=alt.Text(f"{cat_col}:N"))
     # price value just past the right edge
     val_labels = base.mark_text(
-        align="left", baseline="middle", dx=4, fontSize=12,
+        align="left",
+        baseline="middle",
+        dx=4,
+        fontSize=12,
     ).encode(
-        x=alt.X(f"{val_col}:Q",
-                scale=alt.Scale(domain=[lo - pad, hi + pad * 3])),
+        x=alt.X(f"{val_col}:Q", scale=alt.Scale(domain=[lo - pad, hi + pad * 3])),
         text=alt.Text(f"{val_col}:Q", format=".1f"),
     )
     return (bars + cat_labels + val_labels).properties(height=alt.Step(30))
@@ -272,8 +285,9 @@ def render_regions(rows: list[dict], fuel_label: str = "") -> None:
         caption += f" · {fuel_label}"
     st.caption(caption)
     df = pd.DataFrame(shown)
-    st.altair_chart(_price_bar_chart(df, "county", "avg_pence"),
-                    use_container_width=True)
+    st.altair_chart(
+        _price_bar_chart(df, "county", "avg_pence"), use_container_width=True
+    )
 
 
 _MIN_DAYS_TREND = 2
@@ -282,7 +296,7 @@ _MIN_DAYS_BEST = 14
 
 def render_trend(rows: list[dict]) -> None:
     st.subheader("Price trend")
-    st.caption("Daily national average for the selected fuel type")
+    st.caption("Daily national average")
     if len(rows) < _MIN_DAYS_TREND:
         st.info("Collecting history — check back tomorrow for price trend data.")
         return
@@ -295,9 +309,11 @@ def render_trend(rows: list[dict]) -> None:
         alt.Chart(df)
         .mark_line(color="#e63946", strokeWidth=2)
         .encode(
-            x=alt.X("day:T", title=None,
-                    axis=alt.Axis(format="%d %b",
-                                  tickCount={"interval": "day", "step": 1})),
+            x=alt.X(
+                "day:T",
+                title=None,
+                axis=alt.Axis(format="%d %b", tickCount={"interval": "day", "step": 1}),
+            ),
             y=alt.Y(
                 "avg_pence:Q",
                 title="Price (p)",
@@ -315,7 +331,7 @@ def render_trend(rows: list[dict]) -> None:
 
 def render_best_days(data: dict, fuel_label: str = "") -> None:
     st.subheader("Best days to buy")
-    caption = "Day-of-week price patterns based on historical data"
+    caption = "How prices typically vary by day of the week"
     if fuel_label:
         caption += f" · {fuel_label}"
     st.caption(caption)
@@ -323,8 +339,8 @@ def render_best_days(data: dict, fuel_label: str = "") -> None:
     if days_available < _MIN_DAYS_BEST:
         remaining = _MIN_DAYS_BEST - days_available
         st.caption(
-            f"⏳ Need {remaining} more day{'s' if remaining != 1 else ''} of data "
-            "to identify day-of-week price patterns."
+            f"Check back in {remaining} more day{'s' if remaining != 1 else ''} "
+            "— not enough history yet."
         )
         return
     rows = data.get("rows", [])
@@ -334,8 +350,9 @@ def render_best_days(data: dict, fuel_label: str = "") -> None:
     df["avg_pence"] = df["avg_pence"].astype(float)
     best = df.loc[df["avg_pence"].idxmin(), "day_name"]
     st.caption(f"Historically cheapest day: **{best}**")
-    st.altair_chart(_price_bar_chart(df, "day_name", "avg_pence"),
-                    use_container_width=True)
+    st.altair_chart(
+        _price_bar_chart(df, "day_name", "avg_pence"), use_container_width=True
+    )
 
 
 def render_brands(prices: list[dict]) -> None:
@@ -345,8 +362,9 @@ def render_brands(prices: list[dict]) -> None:
     df = pd.DataFrame(rows)
     st.subheader("Average price by brand")
     st.caption("Brands with 10+ stations · cheapest first")
-    st.altair_chart(_price_bar_chart(df, "brand", "avg_pence"),
-                    use_container_width=True)
+    st.altair_chart(
+        _price_bar_chart(df, "brand", "avg_pence"), use_container_width=True
+    )
 
 
 def _geo_allowed() -> bool:
@@ -356,9 +374,7 @@ def _geo_allowed() -> bool:
         host = headers.get("host", "")
         proto = headers.get("x-forwarded-proto", headers.get("x-scheme", ""))
         return (
-            host.startswith("localhost")
-            or host.startswith("127.")
-            or proto == "https"
+            host.startswith("localhost") or host.startswith("127.") or proto == "https"
         )
     except Exception:
         return False
@@ -383,13 +399,18 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
             geo = streamlit_geolocation()
         else:
             geo = None
-            st.button("📍", disabled=True, key="locate_disabled",
-                      help="Unavailable on an insecure connection — "
-                           "enter a postcode instead.")
+            st.button(
+                "📍",
+                disabled=True,
+                key="locate_disabled",
+                help="Unavailable on an insecure connection — "
+                "enter a postcode instead.",
+            )
 
     with st.expander("Search radius"):
-        radius = st.slider("Radius (miles)", min_value=1, max_value=20, value=5,
-                           key="search_radius")
+        radius = st.slider(
+            "Radius (miles)", min_value=1, max_value=20, value=5, key="search_radius"
+        )
 
     submitted = st.button("Search", type="primary", use_container_width=True)
 
@@ -414,8 +435,9 @@ def render_search(engine: sql.Engine, fuel_type: str) -> None:
     if not origin:
         return
     lat, lon = origin
-    rows = get_nearby_stations(engine, lat, lon, radius_miles=radius,
-                               fuel_type=fuel_type)
+    rows = get_nearby_stations(
+        engine, lat, lon, radius_miles=radius, fuel_type=fuel_type
+    )
 
     if not rows:
         st.warning(
@@ -467,13 +489,16 @@ def _render_search_map(rows: list[dict], lat: float, lon: float) -> None:
         get_color=[255, 255, 255],
         get_alignment_baseline="'center'",
     )
-    st.pydeck_chart(pdk.Deck(
-        layers=[pins, labels],
-        initial_view_state=pdk.ViewState(latitude=lat, longitude=lon,
-                                          zoom=11, pitch=0),
-        tooltip={"text": "#{rank_label} {trading_name}\n{price_label}"},
-        map_style=_MAP_STYLE,
-    ))
+    st.pydeck_chart(
+        pdk.Deck(
+            layers=[pins, labels],
+            initial_view_state=pdk.ViewState(
+                latitude=lat, longitude=lon, zoom=11, pitch=0
+            ),
+            tooltip={"text": "#{rank_label} {trading_name}\n{price_label}"},
+            map_style=_MAP_STYLE,
+        )
+    )
 
 
 def _render_station_card(r: dict) -> None:
@@ -577,7 +602,7 @@ def _page_overview() -> None:
         with st.spinner("Loading prices..."):
             prices = get_latest_prices(engine, fuel_type=fuel_type)
     except Exception:
-        st.warning("Price data not yet available — the pipeline may still be loading.")
+        st.warning("No prices yet — data should appear within 30 minutes.")
         prices = []
 
     stats = summary_stats(prices)
@@ -601,7 +626,7 @@ def _page_map() -> None:
         with st.spinner("Loading prices..."):
             prices = get_latest_prices(engine, fuel_type=fuel_type)
     except Exception:
-        st.warning("Price data not yet available — the pipeline may still be loading.")
+        st.warning("No prices yet — data should appear within 30 minutes.")
         prices = []
 
     view_mode = (
@@ -623,7 +648,7 @@ def _page_trends() -> None:
         with st.spinner("Loading prices..."):
             prices = get_latest_prices(engine, fuel_type=fuel_type)
     except Exception:
-        st.warning("Price data not yet available — the pipeline may still be loading.")
+        st.warning("No prices yet — data should appear within 30 minutes.")
         prices = []
 
     try:
@@ -657,12 +682,14 @@ def main() -> None:
     st.set_page_config(page_title="FuelNearMe", page_icon="⛽", layout="wide")
     st.markdown(_GLOBAL_CSS, unsafe_allow_html=True)
 
-    pg = st.navigation([
-        st.Page(_page_overview, title="Overview", icon="📊", default=True),
-        st.Page(_page_search, title="Search", icon="🔍"),
-        st.Page(_page_map, title="Map", icon="🗺️"),
-        st.Page(_page_trends, title="Trends", icon="📈"),
-    ])
+    pg = st.navigation(
+        [
+            st.Page(_page_overview, title="Overview", icon="📊", default=True),
+            st.Page(_page_search, title="Search", icon="🔍"),
+            st.Page(_page_map, title="Map", icon="🗺️"),
+            st.Page(_page_trends, title="Trends", icon="📈"),
+        ]
+    )
     pg.run()
 
 
