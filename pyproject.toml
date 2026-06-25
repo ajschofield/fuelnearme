@@ -1,5 +1,9 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "fnme"
+name = "fnme-cli"
 version = "0.1.0"
 description = "Find cheap(er) fuel near you using the official Fuel Finder service provided by the UK government"
 readme = "README.md"
@@ -24,7 +28,7 @@ app = [
 ]
 
 [project.scripts]
-fnme = "fnme.cli:main"
+fnme-cli = "fnme.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

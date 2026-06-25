@@ -23,7 +23,7 @@ uv run pytest tests/core/test_geo.py::test_name # one test
 uv run pytest --cov=fnme --cov=extract --cov=load --cov=dags --cov=app --cov-report=term-missing
 uv run ruff check             # lint
 uv run ruff format            # format
-uv run fnme --address "London, UK" --radius 5 --sort distance   # run the CLI
+uv run fnme-cli --address "London, UK" --radius 5 --sort distance   # run the CLI
 ```
 
 The whole ELT stack runs under Docker Compose:
