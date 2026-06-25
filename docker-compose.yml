@@ -98,6 +98,9 @@ services:
       - "8080:8080"
     environment:
       <<: *airflow-env
+      # Airflow defaults to 4 gunicorn workers (each a heavy process); 2 is
+      # plenty for a single-user stack and avoids OOM-thrashing on modest hosts.
+      AIRFLOW__WEBSERVER__WORKERS: "2"
     volumes:
       - ./dags:/opt/airflow/dags
     depends_on:
