@@ -80,7 +80,7 @@ with DAG(
     transform = BashOperator(
         task_id="transform",
         bash_command=(
-            f"dbt build --project-dir {_DBT_PROJECT} "
+            f"/home/airflow/dbt-venv/bin/dbt build --project-dir {_DBT_PROJECT} "
             f"--profiles-dir {_DBT_PROJECT} --log-path /tmp/dbt-logs"
         ),
         queue="transform",
