@@ -5,6 +5,19 @@ from pathlib import Path
 from extract.fetch import fetch_all_prices, fetch_all_stations, generate_access_token
 
 
+def read_watermark(data_dir: Path) -> str | None:
+    """Return the watermark timestamp written by the load `prepare` step.
+
+    `prepare` writes `watermark.txt` to the shared volume: the last completed
+    run's timestamp, or empty for a full run. Returns None when the file is
+    absent (e.g. a local CLI run with no prior prepare) or empty.
+    """
+    path = Path(data_dir) / "watermark.txt"
+    if path.exists():
+        return path.read_text().strip() or None
+    return None
+
+
 def main(
     output_dir: Path = Path("/data"),
     effective_start_timestamp: str | None = None,
@@ -13,6 +26,10 @@ def main(
 ) -> None:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # An explicit timestamp wins; otherwise fall back to the watermark file.
+    if effective_start_timestamp is None:
+        effective_start_timestamp = read_watermark(output_dir)
 
     access_token = generate_access_token(client_id, client_secret)
     stations = fetch_all_stations(
