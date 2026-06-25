@@ -29,7 +29,7 @@ uv run fnme-cli --address "London, UK" --radius 5 --sort distance   # run the CL
 The whole ELT stack runs under Docker Compose:
 
 ```bash
-docker compose up --build     # postgres, airflow (init/scheduler/webserver), streamlit app
+docker compose up --build     # postgres, redis, airflow (init/scheduler/webserver + 3 workers), app
 ```
 
 - Requires a root `.env` with `CLIENT_ID` / `CLIENT_SECRET` (Fuel Finder API). The CLI does **not** need these.
@@ -39,18 +39,22 @@ docker compose up --build     # postgres, airflow (init/scheduler/webserver), st
 
 ## ELT data flow
 
-`extract` → `load` → `transform`, orchestrated by Airflow on a `*/30 * * * *` schedule (matches the API's 30-minute price-update guarantee). See `dags/fuelnearme_pipeline.py`.
+`prepare → extract → load → transform`, orchestrated by Airflow on a `*/30 * * * *` schedule (matches the API's 30-minute price-update guarantee). See `dags/fuelnearme_pipeline.py`.
 
-- **extract** (`extract/`): OAuth 2.0 against Fuel Finder, paginated fetch of stations + prices, writes JSON to a shared temp dir.
-- **load** (`load/`): writes into the **`raw` schema only** — `raw.stations` (upsert), `raw.fuel_prices` (append), `raw.pipeline_runs` (watermark). The `public`/analytics schemas are left untouched until dbt runs.
-- **Incremental runs**: the first run fetches everything; later runs fetch only records changed since the last *completed* run, using `raw.pipeline_runs` as the watermark. The extract step returns whether a prior watermark existed and passes `is_incremental` to load via XCom.
-- **transform** (`transform/`, dbt): `staging` (views) → `intermediate` (view join layer) → `marts` (tables: `dim_stations`, `fct_fuel_prices`). The app queries the marts.
+**Each stage runs on its own Airflow worker image under CeleryExecutor**, routed by `queue=` (Redis broker). The scheduler/webserver use the **plain `apache/airflow` image** — no stage deps or code. Each worker image (`extract/Dockerfile`, `load/Dockerfile`, `transform/Dockerfile`) carries **only its own stage's dependencies + code**, so a dependency conflict or OOM in one stage can't touch the scheduler. (CeleryExecutor was chosen over DockerOperator to avoid a host Docker socket, which breaks on rootless/LXC/restricted hosts.)
+
+- **prepare** (queue `load`): creates the `raw` schema, opens a `raw.pipeline_runs` row, and writes `watermark.txt` + `run_id.txt` to the shared `pipeline_data` volume. The **load worker owns all DB access**.
+- **extract** (queue `extract`): OAuth 2.0 against Fuel Finder, paginated fetch, writes `stations.json`/`prices.json` to the shared volume. Reads `watermark.txt` for the incremental start (DB-free — `requests` only).
+- **load** (queue `load`): reads the JSON + `run_id`, writes into the **`raw` schema only** (`raw.stations` upsert, `raw.fuel_prices` append), and completes the pipeline run. `public`/analytics schemas stay untouched until dbt.
+- **transform** (queue `transform`): dbt `staging` (views) → `intermediate` (view join layer) → `marts` (tables: `dim_stations`, `fct_fuel_prices`). The app queries the marts.
+
+**Incremental runs**: first run fetches everything; later runs fetch only records changed since the last *completed* run. The watermark is the last completed `raw.pipeline_runs.run_completed_at`, passed from `prepare` to `extract` via `watermark.txt` on the shared volume (empty file = full run).
 
 ### dbt specifics
 
 - Profiles read entirely from **env vars** (`DBT_HOST`, `DBT_PORT`, `DBT_USER`, `DBT_PASSWORD`, `DBT_DBNAME`) — nothing hardcoded. See `transform/profiles.yml`.
 - The `generate_schema_name` macro uses the custom schema name **verbatim** (no `target_schema_` prefix), so models land in literally `staging` / `intermediate` / `marts`, not prefixed schemas.
-- In the Airflow image, dbt lives in a **separate venv** (`/home/airflow/dbt-venv`) and the transform step runs as a `BashOperator` calling `dbt build`. Extract/load run as `PythonOperator`s in-process.
+- In the transform worker image, dbt lives in an **isolated venv** (`/home/airflow/dbt-venv`, pinned `dbt-core==1.11.11`) to avoid jinja2/click clashes with Airflow; the `transform` `BashOperator` invokes that venv's `dbt build`. The dbt project is **baked into the image** (no volume mount).
 
 ## Development workflow
 

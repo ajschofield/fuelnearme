@@ -13,32 +13,32 @@ timeframe.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                Apache Airflow (*/30 * * * *)        │
-│                                                     │
-│   ┌─────────┐     ┌──────┐     ┌───────────────┐    │
-│   │ extract │────▶│ load │────▶│ transform     │    │
-│   │ Python  │     │Python│     │ (dbt build)   │    │
-│   └─────────┘     └──────┘     └───────────────┘    │
-└─────────────────────────────────────────────────────┘
-        │                 │               │
-        ▼                 ▼               ▼
-   /tmp (JSON)       raw schema      staging / marts
-                    raw.stations     dim_stations
-                  raw.fuel_prices    fct_fuel_prices
-                 raw.pipeline_runs
-
-                                         │
-                                         ▼
-                               ┌──────────────────┐
-                               │  Streamlit App   │
-                               │  :8501           │
-                               └──────────────────┘
+   Airflow scheduler (slim) ──schedule */30──▶ Redis broker (CeleryExecutor)
+                                                    │ routes each task to its queue
+        ┌───────────────┬───────────────┬──────────┴────────┐
+        ▼               ▼               ▼                    ▼
+   ┌─────────┐    ┌─────────┐    ┌──────┐           ┌───────────────┐
+   │ prepare │───▶│ extract │───▶│ load │──────────▶│ transform     │
+   │ worker  │    │ worker  │    │worker│           │ worker (dbt)  │
+   └─────────┘    └─────────┘    └──────┘           └───────────────┘
+    raw schema   /data (JSON)    raw.stations        staging → marts
+    + watermark   ◀── shared volume ──▶ raw.fuel_prices  dim_stations
+                                       raw.pipeline_runs fct_fuel_prices
+                                                              │
+                                                              ▼
+                                                    ┌──────────────────┐
+                                                    │  Streamlit App   │
+                                                    │  :8501           │
+                                                    └──────────────────┘
 ```
 
-**Extract** — authenticates with the Fuel Finder API via OAuth 2.0, fetches stations and prices in paginated batches, writes JSON to a shared temp directory.
+Each pipeline stage runs on its **own Airflow worker image** under CeleryExecutor, routed by queue. The scheduler/webserver stay slim (no stage dependencies), and a fault in one stage is isolated to its worker. Celery is used instead of launching containers per task so the stack runs on any host without a Docker socket.
 
-**Load** — upserts station metadata and appends fuel price records into the `raw` PostgreSQL schema. Supports incremental runs: on the first run all data is fetched; on subsequent runs only records changed since the last completed run are fetched, using `raw.pipeline_runs` as the watermark.
+**Prepare** — creates the `raw` schema, opens a pipeline run, and writes the incremental watermark to the shared volume. The load worker owns all database access.
+
+**Extract** — authenticates with the Fuel Finder API via OAuth 2.0, fetches stations and prices in paginated batches, writes JSON to the shared volume (no database access).
+
+**Load** — upserts station metadata and appends fuel price records into the `raw` PostgreSQL schema, then completes the pipeline run. Supports incremental runs: the first run fetches everything; later runs fetch only records changed since the last completed run, using `raw.pipeline_runs` as the watermark.
 
 **Transform** — dbt materialises staging views, an intermediate join layer, and mart tables (`dim_stations`, `fct_fuel_prices`) queried by the app.
 
@@ -50,7 +50,8 @@ timeframe.
 
 | Layer | Technology |
 |---|---|
-| Orchestration | Apache Airflow 2.10 (LocalExecutor) |
+| Orchestration | Apache Airflow 2.10 (CeleryExecutor, per-stage workers) |
+| Broker | Redis 7 |
 | Extract / Load | Python 3.12 |
 | Transform | dbt-postgres 1.10 |
 | Database | PostgreSQL 16 |

@@ -75,3 +75,54 @@ def test_main_passes_no_timestamp_when_none(
     main(output_dir=tmp_path, client_id="id", client_secret="secret")
     mock_stations.assert_called_once_with(TOKEN, effective_start_timestamp=None)
     mock_prices.assert_called_once_with(TOKEN, effective_start_timestamp=None)
+
+
+@patch("extract.main.generate_access_token", return_value=TOKEN)
+@patch("extract.main.fetch_all_prices")
+@patch("extract.main.fetch_all_stations")
+def test_main_reads_timestamp_from_watermark_file(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
+    mock_stations.return_value = STATIONS
+    mock_prices.return_value = PRICES
+    (tmp_path / "watermark.txt").write_text("2026-06-01T00:00:00")
+    main(output_dir=tmp_path, client_id="id", client_secret="secret")
+    mock_stations.assert_called_once_with(
+        TOKEN, effective_start_timestamp="2026-06-01T00:00:00"
+    )
+    mock_prices.assert_called_once_with(
+        TOKEN, effective_start_timestamp="2026-06-01T00:00:00"
+    )
+
+
+@patch("extract.main.generate_access_token", return_value=TOKEN)
+@patch("extract.main.fetch_all_prices")
+@patch("extract.main.fetch_all_stations")
+def test_main_empty_watermark_file_means_full_run(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
+    mock_stations.return_value = STATIONS
+    mock_prices.return_value = PRICES
+    (tmp_path / "watermark.txt").write_text("")
+    main(output_dir=tmp_path, client_id="id", client_secret="secret")
+    mock_stations.assert_called_once_with(TOKEN, effective_start_timestamp=None)
+
+
+@patch("extract.main.generate_access_token", return_value=TOKEN)
+@patch("extract.main.fetch_all_prices")
+@patch("extract.main.fetch_all_stations")
+def test_main_explicit_timestamp_overrides_watermark_file(
+    mock_stations, mock_prices, mock_token, tmp_path
+):
+    mock_stations.return_value = STATIONS
+    mock_prices.return_value = PRICES
+    (tmp_path / "watermark.txt").write_text("2026-06-01T00:00:00")
+    main(
+        output_dir=tmp_path,
+        effective_start_timestamp="2026-01-01T00:00:00",
+        client_id="id",
+        client_secret="secret",
+    )
+    mock_stations.assert_called_once_with(
+        TOKEN, effective_start_timestamp="2026-01-01T00:00:00"
+    )
