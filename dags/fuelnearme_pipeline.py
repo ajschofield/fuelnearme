@@ -79,6 +79,10 @@ with DAG(
     transform = BashOperator(
         task_id="transform",
         bash_command=(
+            # In prod DBT_PASSWORD comes from a docker secret file; in dev it
+            # falls back to the plain DBT_PASSWORD env. dbt itself only reads env.
+            'export DBT_PASSWORD="$(cat "$DBT_PASSWORD_FILE" 2>/dev/null '
+            '|| printf %s "$DBT_PASSWORD")"; '
             f"/home/airflow/dbt-venv/bin/dbt build --project-dir {_DBT_PROJECT} "
             f"--profiles-dir {_DBT_PROJECT} --log-path /tmp/dbt-logs"
         ),
