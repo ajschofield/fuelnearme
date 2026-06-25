@@ -153,3 +153,29 @@ unit_tests:
         - node_id: "abc123"
           fuel_type: "B7_STANDARD"
           price_pence: 141.9
+
+  - name: test_empty_coordinates_normalised_to_null
+    model: stg_stations
+    given:
+      - input: source('raw', 'stations')
+        rows:
+          - node_id: "abc123"
+            public_phone_number: null
+            trading_name: "Test Station"
+            is_same_trading_and_brand_name: true
+            brand_name: "Test Brand"
+            temporary_closure: false
+            permanent_closure: false
+            permanent_closure_date: null
+            is_motorway_service_station: false
+            is_supermarket_service_station: false
+            location: '{"address_line_1": "1 Test St", "address_line_2": null, "city": "Leeds", "county": "West Yorkshire", "country": "England", "postcode": "LS1 1AA", "latitude": "", "longitude": ""}'
+            amenities: '[]'
+            opening_times: '{}'
+            fuel_types: '["E5"]'
+            loaded_at: "2026-06-01 00:00:00+00"
+    expect:
+      rows:
+        - node_id: "abc123"
+          latitude: null
+          longitude: null
