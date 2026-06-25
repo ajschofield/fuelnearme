@@ -33,6 +33,7 @@ docker compose up --build     # postgres, redis, airflow (init/scheduler/webserv
 ```
 
 - Requires a root `.env` with `CLIENT_ID` / `CLIENT_SECRET` (Fuel Finder API). The CLI does **not** need these.
+- **Prod overlay**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up` swaps plaintext env for file-based Docker secrets (`./secrets/*.txt`, gitignored). Code reads them via `read_secret(name)` — `{name}_FILE` wins over `{name}` — defined per package (extract/load/app) to keep the worker images self-contained.
 - Airflow UI: http://localhost:8080 (admin/admin). Streamlit: http://localhost:8501.
 - **Host Postgres port is `5433`** (mapped to container `5432`) to avoid clashing with a local Postgres.
 - Some `tests/load/` tests use **testcontainers** and need a running Docker daemon.

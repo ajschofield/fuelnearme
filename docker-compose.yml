@@ -9,6 +9,32 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-REMOVED}
   AIRFLOW__WEBSERVER__SECRET_KEY: fuelnearme-dev-secret
 
+# Shared healthcheck cadence; each service overrides `test`.
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+# Celery workers all share the same liveness probe (ping their own node).
+x-worker-healthcheck: &worker-healthcheck
+  <<: *healthcheck
+  test:
+    - CMD-SHELL
+    - celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$$(hostname)" || exit 1
+
+# Rotate container logs so they never grow unbounded on the host.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Data plane (DBs, broker, scheduler, workers) lives on the backend network;
+# only the user-facing webserver/app additionally join the frontend network.
+x-backend-net: &backend-net
+  - backend
+
 # DB connection strings the worker stages use to reach the fuel database.
 x-fuel-db-env: &fuel-db-env
   DATABASE_URL: postgresql://fuelnearme:fuelnearme@postgres:5432/fuelnearme
@@ -34,6 +60,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    # Give Postgres time to checkpoint/flush before Docker SIGKILLs it.
+    stop_grace_period: 60s
+    networks: *backend-net
 
   airflow-db:
     image: postgres:16
@@ -48,6 +82,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    stop_grace_period: 60s
+    networks: *backend-net
 
   redis:
     image: redis:7-alpine
@@ -56,6 +97,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    networks: *backend-net
 
   airflow-init:
     image: apache/airflow:2.10.4
@@ -76,12 +123,19 @@ services:
     depends_on:
       airflow-db:
         condition: service_healthy
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: *backend-net
 
   airflow-scheduler:
     image: apache/airflow:2.10.4
     command: scheduler
     environment:
       <<: *airflow-env
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     volumes:
       - ./dags:/opt/airflow/dags
     depends_on:
@@ -89,6 +143,15 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks: *backend-net
     restart: unless-stopped
 
   airflow-webserver:
@@ -98,6 +161,9 @@ services:
       - "8080:8080"
     environment:
       <<: *airflow-env
+      # Airflow defaults to 4 gunicorn workers (each a heavy process); 2 is
+      # plenty for a single-user stack and avoids OOM-thrashing on modest hosts.
+      AIRFLOW__WEBSERVER__WORKERS: "2"
     volumes:
       - ./dags:/opt/airflow/dags
     depends_on:
@@ -105,6 +171,17 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks:
+      - frontend
+      - backend
     restart: unless-stopped
 
   airflow-worker-extract:
@@ -126,6 +203,13 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks: *backend-net
     restart: unless-stopped
 
   airflow-worker-load:
@@ -145,6 +229,13 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks: *backend-net
     restart: unless-stopped
 
   airflow-worker-transform:
@@ -163,6 +254,13 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    networks: *backend-net
     restart: unless-stopped
 
   app:
@@ -176,7 +274,25 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health').getcode()==200 else 1)"
+      start_period: 30s
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks:
+      - frontend
+      - backend
     restart: unless-stopped
+
+networks:
+  frontend:
+  backend:
 
 volumes:
   pg_data:

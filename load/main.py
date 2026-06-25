@@ -17,6 +17,17 @@ from load.ingest import (
 from load.schema import create_raw_schema
 
 
+def read_secret(name: str) -> str:
+    """Return a secret from `{name}_FILE` (a Docker secret) if set, else `{name}`.
+
+    Lets the same code read plaintext env in dev and file-based secrets in prod.
+    """
+    file_path = os.environ.get(f"{name}_FILE")
+    if file_path:
+        return Path(file_path).read_text().strip()
+    return os.environ[name]
+
+
 def prepare(engine: sql.Engine, data_dir: Path) -> None:
     """Create the raw schema and open a pipeline run.
 
@@ -56,7 +67,7 @@ def main() -> None:
     if len(sys.argv) < 2 or sys.argv[1] not in _COMMANDS:
         raise SystemExit(f"usage: python -m load.main {{{'|'.join(_COMMANDS)}}}")
 
-    engine = sql.create_engine(os.environ["DATABASE_URL"])
+    engine = sql.create_engine(read_secret("DATABASE_URL"))
     data_dir = Path(os.getenv("DATA_DIR", "/data"))
     _COMMANDS[sys.argv[1]](engine, data_dir)
 

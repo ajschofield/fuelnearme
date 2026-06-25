@@ -1,0 +1,60 @@
+# Production overlay — reads credentials from file-based Docker secrets instead
+# of plaintext env. Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# First copy each ./secrets/*.txt.example to ./secrets/*.txt and fill in real
+# values (the .txt files are gitignored). The password embedded in database_url
+# must match fuel_db_password.
+#
+# Plaintext values from the base file are blanked to "" here so they neither
+# conflict with the *_FILE variants nor linger in the container environment;
+# read_secret() and the postgres/dbt entrypoints then use the secret files.
+
+secrets:
+  client_id:
+    file: ./secrets/client_id.txt
+  client_secret:
+    file: ./secrets/client_secret.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  fuel_db_password:
+    file: ./secrets/fuel_db_password.txt
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ""
+      POSTGRES_PASSWORD_FILE: /run/secrets/fuel_db_password
+    secrets:
+      - fuel_db_password
+
+  airflow-worker-extract:
+    environment:
+      CLIENT_ID: ""
+      CLIENT_SECRET: ""
+      CLIENT_ID_FILE: /run/secrets/client_id
+      CLIENT_SECRET_FILE: /run/secrets/client_secret
+    secrets:
+      - client_id
+      - client_secret
+
+  airflow-worker-load:
+    environment:
+      DATABASE_URL: ""
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets:
+      - database_url
+
+  airflow-worker-transform:
+    environment:
+      DBT_PASSWORD: ""
+      DBT_PASSWORD_FILE: /run/secrets/fuel_db_password
+    secrets:
+      - fuel_db_password
+
+  app:
+    environment:
+      DATABASE_URL: ""
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets:
+      - database_url

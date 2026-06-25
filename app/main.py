@@ -63,9 +63,18 @@ def _time_ago(iso: str) -> str:
     return f"{hours // 24}d ago"
 
 
+def read_secret(name: str) -> str:
+    """Return a secret from `{name}_FILE` (a Docker secret) if set, else `{name}`."""
+    file_path = os.environ.get(f"{name}_FILE")
+    if file_path:
+        with open(file_path) as f:
+            return f.read().strip()
+    return os.environ[name]
+
+
 @st.cache_resource
 def get_engine() -> sql.Engine:
-    return sql.create_engine(os.environ["DATABASE_URL"])
+    return sql.create_engine(read_secret("DATABASE_URL"))
 
 
 def geocode(address: str) -> tuple[float, float] | None:

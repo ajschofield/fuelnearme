@@ -94,6 +94,22 @@ docker compose up --build
 
 The pipeline triggers automatically every 30 minutes. You can also trigger it manually from the Airflow UI.
 
+## Production
+
+`docker-compose.prod.yml` overlays the base stack with **file-based Docker secrets** instead of plaintext env. Copy each template, fill in real values (the `.txt` files are gitignored), then start with the overlay:
+
+```bash
+cp secrets/client_id.txt.example      secrets/client_id.txt
+cp secrets/client_secret.txt.example  secrets/client_secret.txt
+cp secrets/fuel_db_password.txt.example secrets/fuel_db_password.txt
+cp secrets/database_url.txt.example   secrets/database_url.txt   # password must match fuel_db_password
+# ...edit each with real values...
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+Credentials are mounted at `/run/secrets/*` and read via `read_secret()` / the `*_FILE` conventions, so they never appear in the committed compose or container environment.
+
 ## CLI
 
 The original CLI tool runs independently from the ELT pipeline. There are no

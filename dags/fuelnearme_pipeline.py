@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-
-from airflow import DAG
 
 # Shared named volume mounted into the extract + load workers. The scheduler
 # only parses this file, so it must import nothing from the stage packages at
@@ -20,28 +18,29 @@ _DBT_PROJECT = "/opt/airflow/transform"
 def _prepare(**context) -> None:
     import sqlalchemy as sql
 
-    from load.main import prepare
+    from load.main import prepare, read_secret
 
-    engine = sql.create_engine(os.environ["DATABASE_URL"])
+    engine = sql.create_engine(read_secret("DATABASE_URL"))
     prepare(engine, _DATA_DIR)
 
 
 def _extract(**context) -> None:
     from extract.main import main as run_extract
+    from extract.main import read_secret
 
     run_extract(
         output_dir=_DATA_DIR,
-        client_id=os.environ["CLIENT_ID"],
-        client_secret=os.environ["CLIENT_SECRET"],
+        client_id=read_secret("CLIENT_ID"),
+        client_secret=read_secret("CLIENT_SECRET"),
     )
 
 
 def _load(**context) -> None:
     import sqlalchemy as sql
 
-    from load.main import ingest
+    from load.main import ingest, read_secret
 
-    engine = sql.create_engine(os.environ["DATABASE_URL"])
+    engine = sql.create_engine(read_secret("DATABASE_URL"))
     ingest(engine, _DATA_DIR)
 
 
@@ -80,6 +79,10 @@ with DAG(
     transform = BashOperator(
         task_id="transform",
         bash_command=(
+            # In prod DBT_PASSWORD comes from a docker secret file; in dev it
+            # falls back to the plain DBT_PASSWORD env. dbt itself only reads env.
+            'export DBT_PASSWORD="$(cat "$DBT_PASSWORD_FILE" 2>/dev/null '
+            '|| printf %s "$DBT_PASSWORD")"; '
             f"/home/airflow/dbt-venv/bin/dbt build --project-dir {_DBT_PROJECT} "
             f"--profiles-dir {_DBT_PROJECT} --log-path /tmp/dbt-logs"
         ),

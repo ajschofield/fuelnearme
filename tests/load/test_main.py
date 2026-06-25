@@ -2,7 +2,21 @@ import json
 
 import sqlalchemy as sql
 
-from load.main import ingest, prepare
+from load.main import ingest, prepare, read_secret
+
+
+def test_read_secret_prefers_file_over_env(monkeypatch, tmp_path):
+    secret = tmp_path / "database_url"
+    secret.write_text("postgresql://from-file\n")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://from-env")
+    monkeypatch.setenv("DATABASE_URL_FILE", str(secret))
+    assert read_secret("DATABASE_URL") == "postgresql://from-file"
+
+
+def test_read_secret_falls_back_to_env(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL_FILE", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://env")
+    assert read_secret("DATABASE_URL") == "postgresql://env"
 
 STATIONS = [
     {
