@@ -72,12 +72,19 @@ Each pipeline stage runs on its **own Airflow worker image** under CeleryExecuto
 
 **1. Configure credentials**
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
 
 ```
 CLIENT_ID=your_client_id
 CLIENT_SECRET=your_client_secret
+AIRFLOW_FERNET_KEY=your_generated_fernet_key   # generate with the command in .env.example
 ```
+
+Credentials for the Fuel Finder API are available from the [developer portal](https://www.developer.fuel-finder.service.gov.uk). The Fernet key encrypts Airflow's internal credential store — generate a fresh one per deployment.
 
 **2. Build and start**
 
