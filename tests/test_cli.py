@@ -10,7 +10,7 @@ from fnme.exceptions import DataFetchError, InvalidDataError, LocationError
 def test_parse_args_should_parse_required_arguments(monkeypatch):
     monkeypatch.setattr(
         "sys.argv",
-        ["fnme", "-a", "LS11"],
+        ["fnme-cli", "-a", "LS11"],
     )
 
     args = cli.parse_args()

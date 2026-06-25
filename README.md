@@ -101,12 +101,12 @@ from the Fuel Finder website.
 
 ```bash
 uv sync
-uv run fnme --address "London, UK" --radius 5 --sort distance
+uv run fnme-cli --address "London, UK" --radius 5 --sort distance
 ```
 
 Sort options: `distance`, `e10`, `e5`, `b7s`
 
-Full options: `uv run fnme --help`
+Full options: `uv run fnme-cli --help`
 
 ## AI Disclaimer
 Claude Code was used to assist development. Whilst I maintain and review the code, I make the final decisions in regards to the direction of the project.
