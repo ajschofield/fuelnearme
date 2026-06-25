@@ -60,6 +60,8 @@ services:
       resources:
         limits:
           memory: 512m
+    # Give Postgres time to checkpoint/flush before Docker SIGKILLs it.
+    stop_grace_period: 60s
 
   airflow-db:
     image: postgres:16
@@ -79,6 +81,7 @@ services:
       resources:
         limits:
           memory: 256m
+    stop_grace_period: 60s
 
   redis:
     image: redis:7-alpine
