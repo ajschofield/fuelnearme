@@ -28,7 +28,12 @@ def test_dag_loads_without_errors():
 
 def test_dag_has_correct_tasks():
     dag = _dagbag().dags["fuelnearme_pipeline"]
-    assert {t.task_id for t in dag.tasks} == {"extract", "load", "transform"}
+    assert {t.task_id for t in dag.tasks} == {
+        "prepare",
+        "extract",
+        "load",
+        "transform",
+    }
 
 
 def test_dag_runs_every_30_minutes():
@@ -38,5 +43,14 @@ def test_dag_runs_every_30_minutes():
 
 def test_task_dependencies_are_sequential():
     dag = _dagbag().dags["fuelnearme_pipeline"]
+    assert dag.get_task("extract").upstream_task_ids == {"prepare"}
     assert dag.get_task("load").upstream_task_ids == {"extract"}
     assert dag.get_task("transform").upstream_task_ids == {"load"}
+
+
+def test_tasks_routed_to_stage_queues():
+    dag = _dagbag().dags["fuelnearme_pipeline"]
+    assert dag.get_task("prepare").queue == "load"
+    assert dag.get_task("extract").queue == "extract"
+    assert dag.get_task("load").queue == "load"
+    assert dag.get_task("transform").queue == "transform"

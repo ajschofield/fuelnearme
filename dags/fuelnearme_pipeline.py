@@ -4,40 +4,45 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import sqlalchemy as sql
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 
 from airflow import DAG
 
-_DATABASE_URL = os.environ.get("DATABASE_URL", "")
-_DATA_DIR = Path("/tmp/fuelnearme_pipeline")
+# Shared named volume mounted into the extract + load workers. The scheduler
+# only parses this file, so it must import nothing from the stage packages at
+# module scope — every stage import happens inside the callables below, which
+# run on the worker whose image carries that stage's dependencies.
+_DATA_DIR = Path("/data")
+_DBT_PROJECT = "/opt/airflow/transform"
 
 
-def _extract(**context) -> bool:
+def _prepare(**context) -> None:
+    import sqlalchemy as sql
+
+    from load.main import prepare
+
+    engine = sql.create_engine(os.environ["DATABASE_URL"])
+    prepare(engine, _DATA_DIR)
+
+
+def _extract(**context) -> None:
     from extract.main import main as run_extract
-    from load.ingest import get_last_run_timestamp
-    from load.schema import create_raw_schema
-
-    engine = sql.create_engine(_DATABASE_URL)
-    create_raw_schema(engine)
-    timestamp = get_last_run_timestamp(engine)
 
     run_extract(
         output_dir=_DATA_DIR,
-        effective_start_timestamp=timestamp,
         client_id=os.environ["CLIENT_ID"],
         client_secret=os.environ["CLIENT_SECRET"],
     )
-    return timestamp is not None  # pushed to XCom as is_incremental
 
 
 def _load(**context) -> None:
-    from load.main import main as run_load
+    import sqlalchemy as sql
 
-    is_incremental = context["ti"].xcom_pull(task_ids="extract")
-    engine = sql.create_engine(_DATABASE_URL)
-    run_load(engine=engine, input_dir=_DATA_DIR, is_incremental=bool(is_incremental))
+    from load.main import ingest
+
+    engine = sql.create_engine(os.environ["DATABASE_URL"])
+    ingest(engine, _DATA_DIR)
 
 
 with DAG(
@@ -54,24 +59,31 @@ with DAG(
     max_active_runs=1,
     tags=["fuelnearme"],
 ) as dag:
+    prepare = PythonOperator(
+        task_id="prepare",
+        python_callable=_prepare,
+        queue="load",
+    )
+
     extract = PythonOperator(
         task_id="extract",
         python_callable=_extract,
+        queue="extract",
     )
 
     load = PythonOperator(
         task_id="load",
         python_callable=_load,
+        queue="load",
     )
 
     transform = BashOperator(
         task_id="transform",
         bash_command=(
-            "/home/airflow/dbt-venv/bin/dbt build "
-            "--profiles-dir /opt/airflow/transform "
-            "--project-dir /opt/airflow/transform "
-            "--log-path /tmp/dbt-logs"
+            f"dbt build --project-dir {_DBT_PROJECT} "
+            f"--profiles-dir {_DBT_PROJECT} --log-path /tmp/dbt-logs"
         ),
+        queue="transform",
     )
 
-    extract >> load >> transform
+    prepare >> extract >> load >> transform
