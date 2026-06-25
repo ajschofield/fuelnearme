@@ -608,8 +608,17 @@ def _page_overview() -> None:
     stats = summary_stats(prices)
     if stats:
         render_metrics(stats, fuel_label=_FUEL_LABELS[fuel_type])
+
     if prices:
-        render_brands(prices)
+        col_brands, col_regions = st.columns([3, 2])
+        with col_brands:
+            render_brands(prices)
+        with col_regions:
+            try:
+                region_rows = get_all_regions(engine, fuel_type=fuel_type)
+            except Exception:
+                region_rows = []
+            render_regions(region_rows, fuel_label=_FUEL_LABELS[fuel_type])
 
 
 def _page_search() -> None:
@@ -645,13 +654,6 @@ def _page_trends() -> None:
     fuel_type = _fuel_selector()
 
     try:
-        with st.spinner("Loading prices..."):
-            prices = get_latest_prices(engine, fuel_type=fuel_type)
-    except Exception:
-        st.warning("No prices yet — data should appear within 30 minutes.")
-        prices = []
-
-    try:
         trend = get_price_trend(engine, fuel_type=fuel_type)
     except Exception:
         trend = []
@@ -666,16 +668,6 @@ def _page_trends() -> None:
         render_trend(trend)
     with col_best:
         render_best_days(best_days_data, fuel_label=fuel_label)
-
-    col_left, col_right = st.columns([3, 2])
-    with col_left:
-        render_brands(prices)
-    with col_right:
-        try:
-            region_rows = get_all_regions(engine, fuel_type=fuel_type)
-        except Exception:
-            region_rows = []
-        render_regions(region_rows, fuel_label=fuel_label)
 
 
 def main() -> None:
