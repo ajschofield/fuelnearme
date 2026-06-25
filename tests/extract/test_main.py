@@ -1,7 +1,9 @@
 import json
 from unittest.mock import patch
 
-from extract.main import main
+import pytest
+
+from extract.main import main, read_secret
 
 STATIONS = [{"node_id": "abc123", "trading_name": "Test Station"}]
 PRICES = [{"node_id": "abc123", "trading_name": "Test Station", "fuel_prices": []}]
@@ -75,6 +77,34 @@ def test_main_passes_no_timestamp_when_none(
     main(output_dir=tmp_path, client_id="id", client_secret="secret")
     mock_stations.assert_called_once_with(TOKEN, effective_start_timestamp=None)
     mock_prices.assert_called_once_with(TOKEN, effective_start_timestamp=None)
+
+
+def test_read_secret_from_env(monkeypatch):
+    monkeypatch.delenv("MY_SECRET_FILE", raising=False)
+    monkeypatch.setenv("MY_SECRET", "from-env")
+    assert read_secret("MY_SECRET") == "from-env"
+
+
+def test_read_secret_from_file(monkeypatch, tmp_path):
+    secret = tmp_path / "secret"
+    secret.write_text("from-file\n")
+    monkeypatch.setenv("MY_SECRET_FILE", str(secret))
+    assert read_secret("MY_SECRET") == "from-file"
+
+
+def test_read_secret_file_takes_precedence_over_env(monkeypatch, tmp_path):
+    secret = tmp_path / "secret"
+    secret.write_text("file-wins")
+    monkeypatch.setenv("MY_SECRET", "env-loses")
+    monkeypatch.setenv("MY_SECRET_FILE", str(secret))
+    assert read_secret("MY_SECRET") == "file-wins"
+
+
+def test_read_secret_missing_raises(monkeypatch):
+    monkeypatch.delenv("NOPE", raising=False)
+    monkeypatch.delenv("NOPE_FILE", raising=False)
+    with pytest.raises(KeyError):
+        read_secret("NOPE")
 
 
 @patch("extract.main.generate_access_token", return_value=TOKEN)

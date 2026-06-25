@@ -5,6 +5,17 @@ from pathlib import Path
 from extract.fetch import fetch_all_prices, fetch_all_stations, generate_access_token
 
 
+def read_secret(name: str) -> str:
+    """Return a secret from `{name}_FILE` (a Docker secret) if set, else `{name}`.
+
+    Lets the same code read plaintext env in dev and file-based secrets in prod.
+    """
+    file_path = os.environ.get(f"{name}_FILE")
+    if file_path:
+        return Path(file_path).read_text().strip()
+    return os.environ[name]
+
+
 def read_watermark(data_dir: Path) -> str | None:
     """Return the watermark timestamp written by the load `prepare` step.
 
@@ -49,6 +60,6 @@ if __name__ == "__main__":
     main(
         output_dir=Path(os.getenv("OUTPUT_DIR", "/data")),
         effective_start_timestamp=os.getenv("EFFECTIVE_START_TIMESTAMP"),
-        client_id=os.environ["CLIENT_ID"],
-        client_secret=os.environ["CLIENT_SECRET"],
+        client_id=read_secret("CLIENT_ID"),
+        client_secret=read_secret("CLIENT_SECRET"),
     )
