@@ -6,7 +6,7 @@ x-airflow-env: &airflow-env
   AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
   AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-db/airflow
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-REMOVED}
+  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
   AIRFLOW__WEBSERVER__SECRET_KEY: fuelnearme-dev-secret
 
 # Shared healthcheck cadence; each service overrides `test`.
