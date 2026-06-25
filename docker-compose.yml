@@ -23,6 +23,13 @@ x-worker-healthcheck: &worker-healthcheck
     - CMD-SHELL
     - celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$$(hostname)" || exit 1
 
+# Rotate container logs so they never grow unbounded on the host.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 # DB connection strings the worker stages use to reach the fuel database.
 x-fuel-db-env: &fuel-db-env
   DATABASE_URL: postgresql://fuelnearme:fuelnearme@postgres:5432/fuelnearme
@@ -48,6 +55,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   airflow-db:
     image: postgres:16
@@ -62,6 +74,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   redis:
     image: redis:7-alpine
@@ -70,6 +87,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 128m
 
   airflow-init:
     image: apache/airflow:2.10.4
@@ -90,6 +112,11 @@ services:
     depends_on:
       airflow-db:
         condition: service_healthy
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   airflow-scheduler:
     image: apache/airflow:2.10.4
@@ -107,6 +134,11 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
     restart: unless-stopped
 
   airflow-webserver:
@@ -129,6 +161,11 @@ services:
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     restart: unless-stopped
 
   airflow-worker-extract:
@@ -151,6 +188,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
     restart: unless-stopped
 
   airflow-worker-load:
@@ -171,6 +213,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
     restart: unless-stopped
 
   airflow-worker-transform:
@@ -190,6 +237,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck: *worker-healthcheck
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 768m
     restart: unless-stopped
 
   app:
@@ -209,6 +261,11 @@ services:
         - CMD-SHELL
         - python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health').getcode()==200 else 1)"
       start_period: 30s
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     restart: unless-stopped
 
 volumes:
