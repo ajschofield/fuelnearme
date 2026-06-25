@@ -9,6 +9,20 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-REMOVED}
   AIRFLOW__WEBSERVER__SECRET_KEY: fuelnearme-dev-secret
 
+# Shared healthcheck cadence; each service overrides `test`.
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+# Celery workers all share the same liveness probe (ping their own node).
+x-worker-healthcheck: &worker-healthcheck
+  <<: *healthcheck
+  test:
+    - CMD-SHELL
+    - celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$$(hostname)" || exit 1
+
 # DB connection strings the worker stages use to reach the fuel database.
 x-fuel-db-env: &fuel-db-env
   DATABASE_URL: postgresql://fuelnearme:fuelnearme@postgres:5432/fuelnearme
@@ -82,6 +96,7 @@ services:
     command: scheduler
     environment:
       <<: *airflow-env
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     volumes:
       - ./dags:/opt/airflow/dags
     depends_on:
@@ -89,6 +104,9 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
     restart: unless-stopped
 
   airflow-webserver:
@@ -108,6 +126,9 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
     restart: unless-stopped
 
   airflow-worker-extract:
@@ -129,6 +150,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
     restart: unless-stopped
 
   airflow-worker-load:
@@ -148,6 +170,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
     restart: unless-stopped
 
   airflow-worker-transform:
@@ -166,6 +189,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck: *worker-healthcheck
     restart: unless-stopped
 
   app:
@@ -179,6 +203,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      <<: *healthcheck
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health').getcode()==200 else 1)"
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
