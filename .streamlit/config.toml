@@ -2,8 +2,8 @@
 # is invoked from the repo root (local dev) and from /app in the Docker image.
 
 [client]
-# Hide the "Deploy" button and developer menu items for a cleaner app.
-toolbarMode = "minimal"
+# "auto" shows the built-in hamburger/settings menu; was "minimal" which hid it.
+toolbarMode = "auto"
 
 [theme]
 base = "dark"
